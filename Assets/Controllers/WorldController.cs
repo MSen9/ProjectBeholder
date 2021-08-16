@@ -1,67 +1,49 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using System;
+using System.Linq;
 
 public class WorldController : MonoBehaviour
 {
-    public Sprite floorSprite;
-    World world;
+    
+
+   
+    public static WorldController Instance { get; protected set; }
+    public World World { get; protected set; }
+
     // Start is called before the first frame update
-    void Start()
+    void OnEnable()
     {
-        //create empty world
-        world = new World();
-        //world.RandomizeTiles();
-        //create a GameObject for each tile
-        int w = world.Width;
-        for (int x = 0; x < world.Width; x++)
-        {
-            for (int y = 0; y < world.Height; y++)
-            {
-                GameObject tile_go = new GameObject();
-                tile_go.name = "Tile_" + x + "_" + y;
-                Tile tile_data = world.getTileAt(x, y);
-                tile_go.transform.position = new Vector3(tile_data.X, tile_data.Y);
-                SpriteRenderer tile_sr = tile_go.AddComponent<SpriteRenderer>();
-                /*
-                if(tile_data.Type == Tile.TileType.Floor)
-                {
-                    tile_sr.sprite = floorSprite;
-                }
-                */
-               
-            }
+        if(Instance != null) {
+            Debug.LogError("There should never be two world controllers.");
         }
-        world.RandomizeTiles();
+        Instance = this;
+        //create empty world
+        World = new World();
+        
+        //instantiate dictionary that tracks which gameObject is rendering which tile data
+
+        
+        Camera.main.transform.position = new Vector3(World.Width / 2, World.Height / 2, Camera.main.transform.position.z);
     }
 
-    float randomizeTileTimer =  2f;
-
-
-    // Update is called once per frame
     void Update()
     {
-        randomizeTileTimer -= Time.deltaTime;
-        if (randomizeTileTimer < 0)
-        {
-            world.RandomizeTiles();
-            randomizeTileTimer = 2f;
-        }
-        
+        //TODO: add pause/unpaunce, speed controls, etc...
+        World.Update(Time.deltaTime);
     }
 
-    void OnTileTypeChanged(Tile tile_data, GameObject tile_go)
+    public Tile GetTileAtWorldCoord(Vector3 coord)
     {
-        if (tile_data.Type == Tile.TileType.Floor)
-        {
-            tile_go.GetComponent<SpriteRenderer>().sprite = floorSprite;
-        } else if (tile_data.Type == Tile.TileType.Empty)
-        {
-            tile_go.GetComponent<SpriteRenderer>().sprite = null;
-        } else
-        {
-            Debug.LogError("OnTileTypeChanged- Unrecognized tile type");
+        int x = Mathf.RoundToInt(coord.x);
+        int y = Mathf.RoundToInt(coord.y);
 
-        }
+        //gameObject.FindObjectOfType<WorldController>();
+        return World.getTileAt(x, y);
     }
+
+
+   
+    
 }
