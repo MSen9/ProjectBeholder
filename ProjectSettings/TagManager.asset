@@ -47,6 +47,9 @@ TagManager:
   - name: InstalledObject
     uniqueID: 3808760269
     locked: 0
+  - name: Jobs
+    uniqueID: 1458119167
+    locked: 0
   - name: Characters
     uniqueID: 1859400595
     locked: 0
