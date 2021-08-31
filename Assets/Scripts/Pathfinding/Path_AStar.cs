@@ -4,6 +4,7 @@ using UnityEngine;
 using Priority_Queue;
 public class Path_AStar
 {
+    //Try D* Lite if this is in need of optimization
     Stack<Tile> path;
     public Path_AStar(World world, Tile tileStart, Tile tileEnd)
     {

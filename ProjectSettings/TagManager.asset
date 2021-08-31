@@ -47,6 +47,12 @@ TagManager:
   - name: InstalledObject
     uniqueID: 3808760269
     locked: 0
+  - name: LooseObjects
+    uniqueID: 2819525681
+    locked: 0
+  - name: LooseObjectsUI
+    uniqueID: 2127783489
+    locked: 0
   - name: Jobs
     uniqueID: 1458119167
     locked: 0

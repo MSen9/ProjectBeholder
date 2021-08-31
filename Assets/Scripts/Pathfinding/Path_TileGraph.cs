@@ -19,7 +19,7 @@ public class Path_TileGraph
         {
             for (int y = 0; y < world.Height; y++)
             {
-                Tile t = world.getTileAt(x, y);
+                Tile t = world.GetTileAt(x, y);
                 //if(t.movementCost > 0)
                // {
                     Path_Node<Tile> n = new Path_Node<Tile>();
@@ -71,8 +71,8 @@ public class Path_TileGraph
         int dX = curr.X - neighbor.X;
         int dY = curr.Y - neighbor.Y;
            
-        if(curr.world.getTileAt(curr.X - dX,curr.Y).movementCost == 0 ||
-            curr.world.getTileAt(curr.X, curr.Y - dY).movementCost == 0)
+        if(World.current.GetTileAt(curr.X - dX,curr.Y).movementCost == 0 ||
+            World.current.GetTileAt(curr.X, curr.Y - dY).movementCost == 0)
         {
             //On the of the directions in the way is blocked and diag cannot be walked through
             return true;

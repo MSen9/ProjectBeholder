@@ -9,31 +9,19 @@ C:\Program Files\Unity\Hub\Editor\2020.3.15f2\Editor\Unity.exe
 -batchMode
 -noUpm
 -name
-AssetImportWorker1
+AssetImportWorker0
 -projectPath
 C:/Users/Play Account/ProjectBeholder
 -logFile
-Logs/AssetImportWorker1.log
+Logs/AssetImportWorker0.log
 -srvPort
-63829
+50298
 Successfully changed project path to: C:/Users/Play Account/ProjectBeholder
 C:/Users/Play Account/ProjectBeholder
 Using Asset Import Pipeline V2.
-Refreshing native plugins compatible for Editor in 102.74 ms, found 3 plugins.
+Refreshing native plugins compatible for Editor in 7012.20 ms, found 3 plugins.
 Preloading 0 native plugins for Editor in 0.00 ms.
 Initialize engine version: 2020.3.15f2 (6cf78cb77498)
 [Subsystems] Discovering subsystems at path C:/Program Files/Unity/Hub/Editor/2020.3.15f2/Editor/Data/Resources/UnitySubsystems
 [Subsystems] Discovering subsystems at path C:/Users/Play Account/ProjectBeholder/Assets
 GfxDevice: creating device client; threaded=0
-Direct3D:
-    Version:  Direct3D 11.0 [level 11.0]
-    Renderer: NVIDIA GeForce GTX 950M (ID=0x139a)
-    Vendor:   
-    VRAM:     2010 MB
-    Driver:   26.21.14.3086
-Initialize mono
-Mono path[0] = 'C:/Program Files/Unity/Hub/Editor/2020.3.15f2/Editor/Data/Managed'
-Mono path[1] = 'C:/Program Files/Unity/Hub/Editor/2020.3.15f2/Editor/Data/MonoBleedingEdge/lib/mono/unityjit'
-Mono config path = 'C:/Program Files/Unity/Hub/Editor/2020.3.15f2/Editor/Data/MonoBleedingEdge/etc'
-Using monoOptions --debugger-agent=transport=dt_socket,embedding=1,server=y,suspend=n,address=127.0.0.1:56708
-Begin MonoManager ReloadAssembly

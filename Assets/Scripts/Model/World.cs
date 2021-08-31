@@ -12,15 +12,21 @@ public class World : IXmlSerializable
     Tile[,] tiles;
     public List<Character> characters;
     public List<InstalledObject> instObjects;
+    public List<Room> rooms;
+    public LooseObjManager looseObjManager;
 
     //The pathfinding graph used to navigate our world map.
     public Path_TileGraph tileGraph;
-    Dictionary<string, InstalledObject> installedObjectPrototypes;
+    public Dictionary<string, InstalledObject> installedObjectPrototypes;
+    public Dictionary<string, Job> instObjJobPrototype;
     int width;
 
     Action<InstalledObject> cbIntalledObjectCreated;
     Action<Character> cbCharacterCreated;
     Action<Tile> cbTileChanged;
+
+
+    static public World current {get; protected set;}
     //TODO: Most likely will be replaced with dedictaed class for managing job quues that might also be semi-static
     //or self initializing, for now this is just a public member of world
     public JobQueue jobQueue;
@@ -42,21 +48,61 @@ public class World : IXmlSerializable
     public World(int width = 100, int height = 100)
     {
         SetupWorld(width, height);
-
+       
+    }
+    public Room GetOutsideRoom()
+    {
+        return rooms[0];
     }
 
+
+    public void AddRoom(Room r)
+    {
+
+        rooms.Add(r);
+    }
+
+    public void CheckEmptyRooms()
+    {
+        for (int i = 1; i < rooms.Count; i++)
+        {
+            if (rooms[i].hasTiles() == false)
+            {
+                DeleteRoom(rooms[i]);
+            }
+        }
+    }
+    public void DeleteRoom(Room r)
+    {
+        if(r == GetOutsideRoom())
+        {
+            Debug.LogError("Tried to delete outside room");
+            return;
+        }
+        //removes room from list, re-assigs tiles to outside
+        rooms.Remove(r);
+        //r.UnAssignAllTiles();
+    }
     void SetupWorld(int width, int height)
     {
+        //set the current world to be this world
+        //Todo: do we need to do any cleanup of the old world?
+        current = this;
+
         jobQueue = new JobQueue();
         this.width = width;
         this.height = height;
         tiles = new Tile[width, height];
+        rooms = new List<Room>();
+        rooms.Add(new Room());
         for (int x = 0; x < width; x++)
         {
             for (int y = 0; y < height; y++)
             {
                 tiles[x, y] = new Tile(this, x, y);
                 tiles[x, y].AddTileTypeUpdate(OnTileChanged);
+                tiles[x, y].room =  GetOutsideRoom(); //always in outside, default room
+                GetOutsideRoom().AssignTile(tiles[x, y]);
             }
         }
         Debug.Log("World created with " + width + "," + height);
@@ -64,6 +110,8 @@ public class World : IXmlSerializable
 
         characters = new List<Character>();
         instObjects = new List<InstalledObject>();
+        looseObjManager = new LooseObjManager();
+       
     }
     public World() : this(100, 100)
     {
@@ -76,6 +124,11 @@ public class World : IXmlSerializable
         {
             c.Update(deltaTime);
         }
+
+        foreach (InstalledObject inst in instObjects)
+        {
+            inst.Update(deltaTime);
+        }
     }
 
     public Character CreateCharacter(Tile t)
@@ -86,25 +139,80 @@ public class World : IXmlSerializable
             cbCharacterCreated(c);
         }
 
+
         return c;
     }
     void CreateObjectPrototypes()
     {
 
         installedObjectPrototypes = new Dictionary<string, InstalledObject>();
-
-        InstalledObject wallPrototype = InstalledObject.CreatePrototype(
+        instObjJobPrototype = new Dictionary<string, Job>();
+        InstalledObject wallPrototype = new InstalledObject(
             "Wall",
             0,
             1,
             1,
+            true,
             true
             );
         installedObjectPrototypes.Add("Wall", wallPrototype);
+
+        //instObjJobPrototype.Add("Wall", new Job(null, "Wall", InstObjActions.JobComplete_InstalledObject, 1f, new LooseObject[] { new LooseObject("Bars", 0, 5)}));
+        InstalledObject doorPrototype = new InstalledObject(
+            "Door",
+            1, //pathfinding cost
+            1,
+            1,
+            false,
+            true
+            );
+        installedObjectPrototypes.Add("Door", doorPrototype);
+
+        installedObjectPrototypes["Door"].SetParameter("openness", 0f);
+        installedObjectPrototypes["Door"].SetParameter("is_opening", false);
+        installedObjectPrototypes["Door"].RegisterUpdateAction(InstObjActions.Door_UpdateAction);
+        installedObjectPrototypes["Door"].IsEnterable = InstObjActions.Door_IsEnterable;
+
+        InstalledObject sPile = new InstalledObject(
+            "Stockpile",
+            1,
+            1,
+            1,
+            false,
+            false
+            );
+        installedObjectPrototypes.Add("Stockpile", sPile);
+        instObjJobPrototype.Add("Stockpile", new Job(null, "Stockpile", 
+            InstObjActions.JobComplete_InstalledObject,-1f, null));
+
+        InstalledObject generator = new InstalledObject(
+            "Generator",
+            3,
+            2,
+            2,
+            false,
+            false
+            );
+        installedObjectPrototypes.Add("Generator", generator);
+        //instObjJobPrototype.Add("Stockpile", new Job(null, "Stockpile",
+        //    InstObjActions.JobComplete_InstalledObject, -1f, null));
+
+        InstalledObject miningPrototype = new InstalledObject(
+            "MiningBase",
+            3, //pathfinding cost
+            3,
+            2,
+            false,
+            false
+            );
+        installedObjectPrototypes.Add("MiningBase", miningPrototype);
+        miningPrototype.jobSpotOffset = new Vector2(1, -1);
+        installedObjectPrototypes["MiningBase"].RegisterUpdateAction(InstObjActions.MiningBase_UpdateAction);
+
     }
 
 
-    public Tile getTileAt(int x, int y)
+    public Tile GetTileAt(int x, int y)
     {
         /*
         if(tiles[x,y] == null)
@@ -162,11 +270,19 @@ public class World : IXmlSerializable
         }
 
         instObjects.Add(instObj);
+        instObj.RegisterRemovedCB(OnInstObjRemoved);
+
+        //do we need to recalculate our rooms?
+        if (instObj.roomEnclosure)
+        {
+            Room.DoRoomFloodFill(instObj.tile);
+        }
         if (cbIntalledObjectCreated != null)
         {
             cbIntalledObjectCreated(instObj);
+            InvalidateTileGraph();
         }
-        InvalidateTileGraph();
+        
 
         return instObj;
     }
@@ -189,6 +305,7 @@ public class World : IXmlSerializable
     {
         cbCharacterCreated -= callbackFunc;
     }
+
     public void RegisterTileChanged(Action<Tile> callbackFunc)
     {
         cbTileChanged += callbackFunc;
@@ -245,6 +362,7 @@ public class World : IXmlSerializable
         {
             for (int y = 0; y < Height; y++)
             {
+                
                 writer.WriteStartElement("Tile");
 
                 tiles[x, y].WriteXml(writer);
@@ -302,21 +420,23 @@ public class World : IXmlSerializable
                     break;
             }
         }
-
+        //for testing: create investiory items
+        
+        //LooseObjManager.Add(looseObj);
     }
 
     public void ReadXml_Tiles(XmlReader reader)
     {
         //reader.ReadToDescendant("Tile");
-        while (reader.Read())
+
+        if (reader.ReadToDescendant("Tile"))
         {
-            if (reader.Name != "Tile")
+            do
             {
-                return;
-            }
-            int x = int.Parse(reader.GetAttribute("X"));
-            int y = int.Parse(reader.GetAttribute("Y"));
-            tiles[x, y].ReadXml(reader);
+                int x = int.Parse(reader.GetAttribute("X"));
+                int y = int.Parse(reader.GetAttribute("Y"));
+                tiles[x, y].ReadXml(reader);
+            } while (reader.ReadToNextSibling("Tile"));
         }
 
     }
@@ -325,20 +445,19 @@ public class World : IXmlSerializable
 
 
         //reader.ReadToDescendant("Tile");
-        while (reader.Read())
+        if (reader.ReadToDescendant("InstObj"))
         {
-            if (reader.Name != "InstObj")
+            do
             {
-                return;
-            }
-            int x = int.Parse(reader.GetAttribute("X"));
-            int y = int.Parse(reader.GetAttribute("Y"));
-            //tiles[x, y].ReadXml(reader);
-            InstalledObject instObj = PlaceInstalledObject(reader.GetAttribute("objectType"), tiles[x, y]);
-            if(instObj != null)
-            {
-                instObj.ReadXml(reader);
-            }
+                int x = int.Parse(reader.GetAttribute("X"));
+                int y = int.Parse(reader.GetAttribute("Y"));
+                //tiles[x, y].ReadXml(reader);
+                InstalledObject instObj = PlaceInstalledObject(reader.GetAttribute("objectType"), tiles[x, y]);
+                if(instObj != null)
+                {
+                    instObj.ReadXml(reader);
+                }
+            } while (reader.ReadToNextSibling("InstObj"));
         }
 
     }
@@ -348,21 +467,24 @@ public class World : IXmlSerializable
 
 
         //reader.ReadToDescendant("Tile");
-        while (reader.Read())
+        if (reader.ReadToDescendant("Character"))
         {
-            if (reader.Name != "Character")
-            {
-                return;
-            }
-            int x = int.Parse(reader.GetAttribute("X"));
-            int y = int.Parse(reader.GetAttribute("Y"));
-            //tiles[x, y].ReadXml(reader);
-            Character c = CreateCharacter(tiles[x, y]);
-            if (c != null)
-            {
-                c.ReadXml(reader);
-            }
+            do { 
+                int x = int.Parse(reader.GetAttribute("X"));
+                int y = int.Parse(reader.GetAttribute("Y"));
+                //tiles[x, y].ReadXml(reader);
+                Character c = CreateCharacter(tiles[x, y]);
+                if (c != null)
+                {
+                    c.ReadXml(reader);
+                }
+            } while (reader.ReadToNextSibling("Character"));
         }
 
+    }
+
+    public void OnInstObjRemoved(InstalledObject instObj)
+    {
+        instObjects.Remove(instObj);
     }
 }

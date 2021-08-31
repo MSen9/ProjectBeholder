@@ -5,16 +5,23 @@ using System;
 public class JobQueue
 {
 
-    protected Queue<Job> jobQueue;
+    protected List<Job> jobQueue;
     Action<Job> cbJobCreated;
     public JobQueue()
     {
-        jobQueue = new Queue<Job>();
+        jobQueue = new List<Job>();
     }
 
     public void Enqueue(Job j)
     {
-        jobQueue.Enqueue(j);
+
+        if(j.jobTime < 0)
+        {
+            //job is completed instantly
+            j.DoWork(0);
+            return;
+        }
+        jobQueue.Add(j);
 
         //TODO callbacks
         if (cbJobCreated != null)
@@ -31,12 +38,19 @@ public class JobQueue
         {
             return null;
         }
-        return jobQueue.Dequeue();
+        Job j = jobQueue[0];
+        jobQueue.RemoveAt(0);
+        return j;
+    }
+
+    public void Remove(Job j)
+    {
+        jobQueue.Remove(j);
     }
     public void ShelveJob(Job j)
     {
         //puts job pack on the queue, FIXME: do more later
-        jobQueue.Enqueue(j);
+        jobQueue.Add(j);
     }
 
     public void RegisterJobCreationCB(Action<Job> cb)

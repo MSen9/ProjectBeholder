@@ -34,11 +34,15 @@ public class JobSpriteCont : MonoBehaviour
             return;
         }
         //Tile tile_data = World.getTileAt(x, y);
+        if(job.jobObjectType != null)
+        {
+
+       
         GameObject job_go = new GameObject();
         //add our tile-go pair to our dictionary
         jobGameObjectMap.Add(job, job_go);
         job_go.name = job.jobObjectType + job.tile.X + "_" + job.tile.Y;
-        job_go.transform.position = new Vector3(job.tile.X, job.tile.Y);
+        job_go.transform.position = new Vector3(job.tile.X + (job.instObjPrototype.width - 1) / 2f, job.tile.Y + (job.instObjPrototype.height - 1) / 2f);
         SpriteRenderer inst_sr = job_go.AddComponent<SpriteRenderer>();
         job_go.transform.SetParent(this.transform, true);
 
@@ -46,6 +50,7 @@ public class JobSpriteCont : MonoBehaviour
         //inst_sr.sortingLayerName = "InstalledObject";
         inst_sr.color = new Color(.5f, 1f, .5f, 0.51f);
         inst_sr.sortingLayerName = "Jobs";
+        }
         //obj.RegisterOnChangedCallback(OnInstalledObjectChanged);
         job.RegisterJobCompleteCB(OnJobEnded);
         job.RegisterJobCancelledCB(OnJobEnded);
@@ -55,10 +60,14 @@ public class JobSpriteCont : MonoBehaviour
         //FIXME: We can only do inst obj building jobs
 
         //TODO: Delete sprite
-        GameObject job_go = jobGameObjectMap[job];
-        jobGameObjectMap.Remove(job);
-        //job = null;
-        Destroy(job_go);
+        if(job.jobObjectType != null)
+        {
+            GameObject job_go = jobGameObjectMap[job];
+            jobGameObjectMap.Remove(job);
+            //job = null;
+            Destroy(job_go);
+        }
+
         job.UnregisterJobCompleteCB(OnJobEnded);
         job.UnregisterJobCancelledCB(OnJobEnded);
 

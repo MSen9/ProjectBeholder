@@ -8,39 +8,38 @@ using System.Xml;
 
 
 public enum TileType { Empty, Floor };
+public enum Enterability { Yes, Never, Soon};
+
 public class Tile : IXmlSerializable
 {
     
-
-    TileType type = TileType.Empty;
     Action<Tile> cbTileChanged;
-    LooseObject looseObject;
+    public LooseObject looseObject;
+
+    public Room room;
+    float baseMoveCost = 1;
     public InstalledObject installedObject
     {
         get; protected set;
     }
 
     public Job pendingInstObjJob;
-    public World world {
-        get; protected set;
-    }
-
 
     int x;
     int y;
-
-    public TileType Type
+    TileType trueTileType;
+    public TileType tileType
     {
         get
         {
-            return type;
+            return trueTileType;
         }
         set
         {
-            TileType oldType = type;
-            type = value;
+            TileType oldType = trueTileType;
+            trueTileType = value;
             
-            if(cbTileChanged != null && type != oldType)
+            if(cbTileChanged != null && trueTileType != oldType)
             {
                 cbTileChanged(this);
             }
@@ -54,23 +53,22 @@ public class Tile : IXmlSerializable
     {
         get
         {
-            if(Type == TileType.Empty)
+            if(tileType == TileType.Empty)
             {
                 return 0;
             }
 
             if(installedObject == null)
             {
-                return 1;
+                return baseMoveCost;
             }
 
-            return 1 * installedObject.movementCost;
+            return baseMoveCost * installedObject.movementCost;
         }
         
     }
     public Tile( World world, int x, int y)
     {
-        this.world = world;
         this.x = x;
         this.y = y;
     }
@@ -84,25 +82,92 @@ public class Tile : IXmlSerializable
         cbTileChanged -= callback;
     }
 
-    public bool PlaceObject(InstalledObject objInstance)
-    {
-        if(objInstance == null)
-        {
-            //we are uninstalling whatever was here before
-            installedObject = null;
-            return true;
-        }
 
-        if(installedObject != null)
+    public bool RemoveInstObj()
+    {
+        if (installedObject == null)
         {
-            Debug.LogError("Trying to assign an installed object to a tile that already has one");
             return false;
         }
+        int width = installedObject.width;
+        int height = installedObject.height;
+        for (int x_off = X; x_off < X + width; x_off++)
+        {
+            for (int y_off = Y; y_off < Y + height; y_off++)
+            {
+                Tile t = World.current.GetTileAt(x_off, y_off);
+                t.installedObject = null;
+            }
+        }
+        return true;
+    }
+    public bool PlaceInstalledObject(InstalledObject objInstance)
+    {
 
-        installedObject = objInstance;
+        if(objInstance == null)
+        {
+            RemoveInstObj();
+            //just uninstalling FIXME: what if we have a multi-tile inst obj;
+        }
+
+        if (objInstance.isValidPosition(this) == false)
+        {
+            Debug.LogError("Trying to assign inst obj to invalid position");
+            return false;
+        }
+        for (int x_off = X; x_off < X + objInstance.width; x_off++)
+        {
+            for (int y_off = Y; y_off < Y+objInstance.height; y_off++)
+            {
+                Tile t = World.current.GetTileAt(x_off, y_off);
+
+
+
+                t.installedObject = objInstance;
+            }
+        }
+      
         return true;
     }
 
+
+    public bool PlaceLooseObject(LooseObject newLooseObj)
+    {
+        int numToMove = newLooseObj.stackSize;
+
+        
+
+        if(newLooseObj == null)
+        {
+            return false; 
+        }
+        if(looseObject != null)
+        {
+            if(newLooseObj.objectType != looseObject.objectType)
+            {
+                Debug.LogError("Trying to assign loose object to stack of different type");
+                return false;
+            }
+
+            if(newLooseObj.stackSize + looseObject.stackSize > looseObject.maxStackSize)
+            {
+                numToMove = looseObject.maxStackSize - looseObject.stackSize;
+            }
+            looseObject.stackSize += numToMove;
+            newLooseObj.stackSize -= numToMove;
+            return true;
+        }
+
+        //we know our current inventory is null
+
+        looseObject = newLooseObj.Clone();
+        newLooseObj.stackSize = 0;
+        looseObject.tile = this;
+
+        return true;
+    }
+
+    
     //tells us if two tile are adjacent
     public bool IsNeighbor(Tile tile, bool checkDiag = false)
     {
@@ -139,25 +204,25 @@ public class Tile : IXmlSerializable
             ns = new Tile[8]; //NESW - NE - SE - SW - NW
         }
         Tile t;
-        t = world.getTileAt(X, Y + 1);
+        t = World.current.GetTileAt(X, Y + 1);
         ns[0] = t; //could be null, no problem
-        t = world.getTileAt(X+1, Y);
+        t = World.current.GetTileAt(X+1, Y);
         ns[1] = t; //could be null, no problem
-        t = world.getTileAt(X, Y - 1);
+        t = World.current.GetTileAt(X, Y - 1);
         ns[2] = t; //could be null, no problem
-        t = world.getTileAt(X-1, Y);
+        t = World.current.GetTileAt(X-1, Y);
         ns[3] = t; //could be null, no problem
 
         if (diagOkay)
         {
 
-            t = world.getTileAt(X+1, Y + 1);
+            t = World.current.GetTileAt(X+1, Y + 1);
             ns[4] = t; //could be null, no problem
-            t = world.getTileAt(X + 1, Y-1);
+            t = World.current.GetTileAt(X + 1, Y-1);
             ns[5] = t; //could be null, no problem
-            t = world.getTileAt(X-1, Y - 1);
+            t = World.current.GetTileAt(X-1, Y - 1);
             ns[6] = t; //could be null, no problem
-            t = world.getTileAt(X - 1, Y+1);
+            t = World.current.GetTileAt(X - 1, Y+1);
             ns[7] = t; //could be null, no problem
         }
 
@@ -171,7 +236,7 @@ public class Tile : IXmlSerializable
 
     public void WriteXml(XmlWriter writer)
     {
-        writer.WriteAttributeString("Type", Type.ToString());
+        writer.WriteAttributeString("Type", tileType.ToString());
         writer.WriteAttributeString("X", X.ToString());
         writer.WriteAttributeString("Y", Y.ToString());
     }
@@ -179,7 +244,41 @@ public class Tile : IXmlSerializable
     public void ReadXml(XmlReader reader)
     {
        
-        Type = (TileType)Enum.Parse(typeof(TileType), reader.GetAttribute("Type"));
+        tileType = (TileType)Enum.Parse(typeof(TileType), reader.GetAttribute("Type"));
         
+    }
+
+    public Enterability TryEnter()
+    {
+        //this returns true if you can enter this tile right this moment.
+
+        if(movementCost == 0)
+        {
+            return Enterability.Never;
+        }
+        //check our instObj to see if it has a special block on enterability
+        if(installedObject != null && installedObject.IsEnterable != null)
+        {
+            return installedObject.IsEnterable(installedObject);
+        }
+         
+        return Enterability.Yes;
+    }
+
+    public Tile North()
+    {
+        return World.current.GetTileAt(X, Y + 1);
+    }
+    public Tile South()
+    {
+        return World.current.GetTileAt(X, Y - 1);
+    }
+    public Tile East()
+    {
+        return World.current.GetTileAt(X+1, Y);
+    }
+    public Tile West()
+    {
+        return World.current.GetTileAt(X-1, Y + 1);
     }
 }

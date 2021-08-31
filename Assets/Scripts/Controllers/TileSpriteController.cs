@@ -25,7 +25,7 @@ public class TileSpriteController : MonoBehaviour
             {
                 GameObject tile_go = new GameObject();
 
-                Tile tile_data = world.getTileAt(x, y);
+                Tile tile_data = world.GetTileAt(x, y);
 
                 //add our tile-go pair to our dictionary
                 tileGameObjectMap.Add(tile_data, tile_go);
@@ -83,10 +83,10 @@ public class TileSpriteController : MonoBehaviour
         }
 
 
-        if (tile_data.Type ==TileType.Floor)
+        if (tile_data.tileType ==TileType.Floor)
         {
             tile_go.GetComponent<SpriteRenderer>().sprite = floorSprite;
-        } else if (tile_data.Type == TileType.Empty)
+        } else if (tile_data.tileType == TileType.Empty)
         {
             tile_go.GetComponent<SpriteRenderer>().sprite = emptyFloorSprite;
         } else

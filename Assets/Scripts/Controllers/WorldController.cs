@@ -54,7 +54,7 @@ public class WorldController : MonoBehaviour
         int y = Mathf.RoundToInt(coord.y);
 
         //gameObject.FindObjectOfType<WorldController>();
-        return World.getTileAt(x, y);
+        return World.GetTileAt(x, y);
     }
     public void NewWorld()
     {
@@ -99,7 +99,7 @@ public class WorldController : MonoBehaviour
         World = new World();
 
         //instantiate dictionary that tracks which gameObject is rendering which tile data
-        Character c = world.CreateCharacter(world.getTileAt(world.Width / 2, world.Height / 2));
+        Character c = world.CreateCharacter(world.GetTileAt(world.Width / 2, world.Height / 2));
 
         Camera.main.transform.position = new Vector3(World.Width / 2, World.Height / 2, Camera.main.transform.position.z);
     }

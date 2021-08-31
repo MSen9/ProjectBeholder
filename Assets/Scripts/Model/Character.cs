@@ -25,11 +25,29 @@ public class Character : IXmlSerializable
     {
         get; protected set;
     }
-    Tile destTile; // if we aren't moving then destTile = currTile
+
+    Tile _destTile;
+    Tile destTile
+    {
+        get
+        {
+            return _destTile;
+        }
+        set
+        {
+            if(_destTile != value)
+            {
+                _destTile = value;
+                pathAStar = null; //reset our pathfinding for a new destination
+            }
+        }
+    }// if we aren't moving then destTile = currTile
     Tile nextTile;
     Path_AStar pathAStar;
+    public LooseObject looseObject;
+       
     float movementPercentage; // goes from 0 to 1 as we move from curr tile to dest tile
-    float speed = 2.5f; //tiles per second
+    float speed = 8f; //tiles per second
 
     Job myJob;
 
@@ -46,30 +64,140 @@ public class Character : IXmlSerializable
         this.nextTile = tile;
 
     }
+
+    void GetNewJob()
+    {
+        //grab a new job
+        //check to see if the job tile is reachable:
+        myJob = World.current.jobQueue.Dequeue();
+        if (myJob == null)
+        {
+            return;
+        }
+
+        destTile = myJob.tile;
+        myJob.RegisterJobCancelledCB(OnJobEnded);
+        myJob.RegisterJobCompleteCB(OnJobEnded);
+
+        
+        pathAStar = new Path_AStar(World.current, currTile, destTile);
+        if (pathAStar.Length() == 0)
+        {
+            Debug.LogError("Path_AStar returned no path");
+            AbandonJob(myJob);
+            pathAStar = null;
+            destTile = currTile;
+        }
+
+
+    }
     void Update_DoJob(float deltaTime)
     {
         if (myJob == null)
         {
-            //grab a new job
-            myJob = currTile.world.jobQueue.Dequeue();
-            if (myJob != null)
+
+            GetNewJob();
+            if (myJob == null)
             {
-                //we have a job
-                destTile = myJob.tile;
-                myJob.RegisterJobCancelledCB(OnJobEnded);
-                myJob.RegisterJobCompleteCB(OnJobEnded);
-            }
+                //there was no job on the queue for us, so just return
+                destTile = currTile;
+                return;
+            } 
         }
 
-        if (currTile == destTile)
+        //we have a job and the tile is reachable
+        //Step 1: deos the job have all the materials it needs????
+
+
+        if (myJob.HasAllMaterials() == false)
+        {
+            //step 2: are we CARRYING anything the job needs
+            if(looseObject != null)
+            {
+                if (myJob.DesiresLooseObjType(looseObject) > 0)
+                {
+                    
+
+                    if(currTile == destTile)
+                    {
+                        //we are at the job site, so deliver the goods;
+                        World.current.looseObjManager.PlaceLooseObj(myJob, looseObject);
+                        //myJob.looseObjRequirements[looseObject.objectType]
+
+                        if(looseObject.stackSize == 0)
+                        {
+                            looseObject = null;
+                        }
+                        else{
+                            Debug.LogError("Character is still carrying inventory (HOW!?)");
+                            looseObject = null;
+                        }
+                    } else
+                    {
+                        //need to walk to job site
+                        destTile = myJob.tile;
+                        return;
+                    }
+                }
+                else
+                {
+                    //we have something, but job doesn't want it?
+                    //Dump the looseObject
+
+                    //TODO: Actually, walk to the nearest empty tile and dump it.
+
+                    if(World.current.looseObjManager.PlaceLooseObj(currTile, looseObject) == false){
+                        Debug.LogError("Character tried to dump loose object into an invalid tile, maybe there is something there?");
+                        //FIXME: for the sake of continuing on, we are still going to dump reference
+                        looseObject = null;
+                    }
+                }
+
+                
+            } else
+            {
+                //at this point the job still requires invenoty but we don't have it
+                if(currTile.looseObject != null  && myJob.DesiresLooseObjType(currTile.looseObject) > 0)
+                {
+                    World.current.looseObjManager.PlaceLooseObj(this, currTile.looseObject, myJob.DesiresLooseObjType(currTile.looseObject));
+                }
+                else { 
+                    //very simple and unoptimal set-up
+                    LooseObject desiredObj = myJob.GetFirstDesiredLooseObj();
+                    LooseObject supplier = World.current.looseObjManager.GetClosestLooseObjectOfType(desiredObj.objectType,
+                        currTile, desiredObj.maxStackSize - desiredObj.stackSize);
+
+                    if(supplier == null)
+                    {
+                        Debug.Log("No tile contains object of type: Desired.ObjectType to satisfy job requirements");
+
+                        AbandonJob(myJob);
+                        return;
+                    }
+                    //then deliver the goods
+                    destTile = supplier.tile;
+                    return;
+                }
+            }
+
+
+            //walk to the job tile, then drop it off
+            destTile = myJob.tile;
+            //if not, walt to a tile containing the required goods
+            //   if already on such a tile, pick up the goods
+            //set dest tile to be 
+
+
+            return; //we can't continue until we get all mateials
+        }
+
+        //if we get here then the job has all the MATS it needs
+
+        destTile = myJob.tile;
+        if (myJob != null && currTile == myJob.tile)
         //if (pathAStar != null && pathAStar.Length() == 1)
         {
-            
-            if (myJob != null)
-            {
-                myJob.DoWork(deltaTime);
-            }
-            return;
+            myJob.DoWork(deltaTime);
         }
 
         return;
@@ -79,7 +207,7 @@ public class Character : IXmlSerializable
     {
         nextTile = destTile = currTile;
         pathAStar = null;
-        currTile.world.jobQueue.Enqueue(j);
+        World.current.jobQueue.Enqueue(j);
         myJob = null;
     }
 
@@ -94,7 +222,7 @@ public class Character : IXmlSerializable
             //Get the next tile from the pathfinder.
             if(pathAStar == null || pathAStar.Length() == 0)
             {
-                pathAStar = new Path_AStar(currTile.world, currTile, destTile);
+                pathAStar = new Path_AStar(World.current, currTile, destTile);
                 if(pathAStar.Length() == 0)
                 {
                     Debug.LogError("Path_AStar returned no path");
@@ -104,15 +232,32 @@ public class Character : IXmlSerializable
                 }
             }
             nextTile = pathAStar.GetNextTile();
-            if(nextTile == currTile)
+            if(nextTile == currTile && pathAStar.Length() != 0)
             {
-                Debug.LogError("Update--Domovement - Nexttile is currtile?");
+                nextTile = pathAStar.GetNextTile();
+                if (nextTile == currTile)
+                {
+                    Debug.LogError("Update--Domovement - Nexttile is currtile?");
+                }
             }
         }
         //total distance from point a to b
         float distToTravel = Mathf.Sqrt(Mathf.Pow(currTile.X - nextTile.X, 2) + Mathf.Pow(currTile.Y - nextTile.Y, 2));
         //distance we can travel this updat
-        float distThisFrame = speed * deltaTime;
+        if (nextTile.TryEnter() == Enterability.Never)
+        {
+            Debug.LogError("not possible to move through next tile");
+            nextTile = null;
+            pathAStar = null;
+            return;
+        } else if (nextTile.TryEnter() == Enterability.Soon)
+        {
+            //tile we're trying to enter is walkable, but could it be  a door?
+            //like a door, can be entered soon, don't bail on movement/path.
+
+            return;
+        }
+        float distThisFrame = speed * deltaTime / ((currTile.movementCost+nextTile.movementCost)/2);
         //how much is that in terms of percentage
         float percThisFram = distThisFrame / distToTravel;
         movementPercentage += percThisFram;
@@ -193,4 +338,6 @@ public class Character : IXmlSerializable
     {
 
     }
+
+    
 }
