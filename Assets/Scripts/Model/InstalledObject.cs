@@ -383,8 +383,8 @@ public class InstalledObject : IXmlSerializable
         jobs.Add(j);
         j.workedInstObj = this;
         World.current.jobQueue.Enqueue(j);
-        j.RegisterJobCompleteCB(RemoveJob);
-        j.RegisterJobCancelledCB(RemoveJob);
+        j.RegisterJobCompletedCB(RemoveJob);
+        j.RegisterJobStoppedCB(RemoveJob);
     }
 
     public void RemoveJob(Job j)

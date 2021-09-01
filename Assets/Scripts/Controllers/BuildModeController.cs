@@ -123,7 +123,7 @@ public class BuildModeController : MonoBehaviour
                 //FXIME: don't like manually and explicitely setting flags
                 t.pendingInstObjJob = j;
 
-                j.RegisterJobCancelledCB((thejob) => { thejob.tile.pendingInstObjJob = null; });
+                j.RegisterJobStoppedCB((thejob) => { thejob.tile.pendingInstObjJob = null; });
                 WorldController.Instance.World.jobQueue.Enqueue(j);
 
                 Debug.Log("Job Queue size: " + WorldController.Instance.World.jobQueue.Count());

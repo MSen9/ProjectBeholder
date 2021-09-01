@@ -52,8 +52,8 @@ public class JobSpriteCont : MonoBehaviour
         inst_sr.sortingLayerName = "Jobs";
         }
         //obj.RegisterOnChangedCallback(OnInstalledObjectChanged);
-        job.RegisterJobCompleteCB(OnJobEnded);
-        job.RegisterJobCancelledCB(OnJobEnded);
+        job.RegisterJobCompletedCB(OnJobEnded);
+        job.RegisterJobStoppedCB(OnJobEnded);
     }
     void OnJobEnded(Job job)
     {
@@ -68,8 +68,8 @@ public class JobSpriteCont : MonoBehaviour
             Destroy(job_go);
         }
 
-        job.UnregisterJobCompleteCB(OnJobEnded);
-        job.UnregisterJobCancelledCB(OnJobEnded);
+        job.UnregisterJobCompletedCB(OnJobEnded);
+        job.UnregisterJobStoppedCB(OnJobEnded);
 
         
 

@@ -239,12 +239,19 @@ public class Tile : IXmlSerializable
         writer.WriteAttributeString("Type", tileType.ToString());
         writer.WriteAttributeString("X", X.ToString());
         writer.WriteAttributeString("Y", Y.ToString());
+        writer.WriteAttributeString("Rm", World.current.rooms.IndexOf(room).ToString());
     }
 
     public void ReadXml(XmlReader reader)
     {
        
         tileType = (TileType)Enum.Parse(typeof(TileType), reader.GetAttribute("Type"));
+        int roomID = int.Parse(reader.GetAttribute("Rm"));
+        if(roomID != -1)
+        {
+            room = World.current.rooms[roomID];
+            room.AssignTile(this);
+        }
         
     }
 

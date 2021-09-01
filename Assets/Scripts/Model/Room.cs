@@ -1,8 +1,11 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using System.Xml.Schema;
+using System.Xml.Serialization;
+using System.Xml;
 
-public class Room 
+public class Room : IXmlSerializable
 {
     //atmospheric stats
     List<Tile> tiles;
@@ -57,7 +60,7 @@ public class Room
             oldRoom.tiles = new List<Tile>(); // we know all tiles not point to another room
             if(oldRoom != world.GetOutsideRoom())
             {
-                //at this poitn, old room shouldn't have anymore tiles in it.
+                //at this point, old room shouldn't have anymore tiles in it.
                 if(oldRoom.tiles.Count > 0)
                 {
                     Debug.LogError("oldroom: still has tiles assigned to it, this is WRONG");
@@ -67,8 +70,8 @@ public class Room
             }
         } else
         {
-            //old room is null so source tile was probably a wall
-            SpecificFloodFill(sourceTile, null);
+            //old room is null so source tile was probably a wall that was destroyed
+            SpecificFloodFill(sourceTile, null,true);
         }
 
         //check for empty room, destroying all that are empty
@@ -84,7 +87,7 @@ public class Room
 
         return true;
     }
-    protected static void SpecificFloodFill(Tile tile, Room oldRoom)
+    protected static void SpecificFloodFill(Tile tile, Room oldRoom, bool desconstructCause = false)
     {
         if(tile == null)
         {
@@ -111,6 +114,7 @@ public class Room
         Room newRoom = new Room();
         Queue<Tile> tilesToCheck = new Queue<Tile>();
         tilesToCheck.Enqueue(tile);
+        bool outside = false;
         while (tilesToCheck.Count > 0)
         {
             Tile t = tilesToCheck.Dequeue();
@@ -126,17 +130,30 @@ public class Room
                     if(t2 == null || t2.tileType == TileType.Empty)
                     {
                         //hit open space,
-
-                        newRoom.UnAssignAllTiles();
-                        return;
+                        if (desconstructCause)
+                        {
+                            outside = true;
+                        } else
+                        {
+                            newRoom.UnAssignAllTiles();
+                            return;
+                        }
+                        
+                        
                     }
-                    if (t2 != null && (t2.installedObject == null || t2.installedObject.roomEnclosure == false) && t2.room != newRoom)
+                    else if (t2 != null && (t2.installedObject == null || t2.installedObject.roomEnclosure == false) && t2.room != newRoom)
                     {
                         tilesToCheck.Enqueue(t2);
                     }
                 }
                 
             }
+        }
+
+        if (outside)
+        {
+            newRoom.UnAssignAllTiles();
+            return;
         }
         //currentTile belongs to this room
 
@@ -146,5 +163,20 @@ public class Room
 
         
     }
-   
+
+    public XmlSchema GetSchema()
+    {
+        return null;
+    }
+
+    public void WriteXml(XmlWriter writer)
+    {
+        //write specific attributes here (i.e room type, containment, etc.)
+    }
+
+    public void ReadXml(XmlReader reader)
+    {
+       //read back in those specific attributes
+    }
+
 }

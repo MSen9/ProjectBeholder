@@ -14,7 +14,7 @@ public class BuildMenu : MonoBehaviour
         BuildModeController bmc = GameObject.FindObjectOfType<BuildModeController>();
         foreach(string s in World.current.installedObjectPrototypes.Keys)
         {
-            
+            buttCount++;
             GameObject go = Instantiate(baseInstObjButton);
             go.transform.SetParent(this.transform);
 

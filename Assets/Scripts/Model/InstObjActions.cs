@@ -56,9 +56,10 @@ public class InstObjActions
         }
 
         Job j = new Job(
-            instObj.GetJobSpotTile(), null, MiningBase_JobComplete, 1f, null
+            instObj.GetJobSpotTile(), null, MiningBase_JobComplete, 1f, null,true
             ) ;
         instObj.AddJob(j);
+        //j.RegisterJobStoppedCB(MiningBase_JobStopped);
         
     }
 
@@ -66,6 +67,11 @@ public class InstObjActions
     {
         WorldController.Instance.world.looseObjManager.PlaceLooseObj(j.tile, new LooseObject("Bars", 201, 50), true);
         j.workedInstObj.RemoveJob(j);
+
+    }
+    public static void MiningBase_JobStopped(Job j)
+    {
+        
 
     }
 

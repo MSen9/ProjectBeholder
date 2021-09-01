@@ -10,11 +10,15 @@ public class Job
 
 
     public Tile tile;
+
+    float jobTimeRequired;
     public float jobTime
     {
         get;
         protected set;
     }
+
+    protected bool jobRepeats = false;
 
     //FIXME: hard-coded parameter for furniture
     public string jobObjectType
@@ -24,8 +28,9 @@ public class Job
 
     System.Object jobDataObject;
 
-    Action<Job> cbJobComplete;
-    Action<Job> cbJobCanceled;
+    Action<Job> cbJobCompleted; //finished work cycle, things should get build
+    Action<Job> cbJobStopped; //Job has been stopped, either non-repeating or cancelled
+    Action<Job> cbJobWorked;
 
     public Dictionary<string, LooseObject> looseObjRequirements;
 
@@ -33,13 +38,15 @@ public class Job
 
     public InstalledObject workedInstObj;
 
-    public Job (Tile tile,string jobObjectType,Action<Job> cbJobComplete,float jobTime, LooseObject[] looseObjRequirements)
+    public Job (Tile tile,string jobObjectType,Action<Job> cbJobCompleted,float jobTime, LooseObject[] looseObjRequirements, bool jobRepeats = false)
     {
         this.tile = tile;
-        this.cbJobComplete = cbJobComplete;
-        this.jobTime = jobTime;
-        this.jobObjectType = jobObjectType;
+        this.cbJobCompleted = cbJobCompleted;
+        
+        this.jobTimeRequired = this.jobTime = jobTime;
 
+        this.jobObjectType = jobObjectType;
+        this.jobRepeats = jobRepeats;
         this.looseObjRequirements = new Dictionary<string, LooseObject>();
         if(looseObjRequirements != null) { 
             foreach(LooseObject looseObj in looseObjRequirements)
@@ -53,7 +60,7 @@ public class Job
     protected Job(Job other)
     {
         this.tile = other.tile;
-        this.cbJobComplete += other.cbJobComplete;
+        this.cbJobCompleted += other.cbJobCompleted;
         this.jobTime = other.jobTime;
         this.jobObjectType = other.jobObjectType;
 
@@ -70,36 +77,69 @@ public class Job
     {
         return new Job(this);
     }
-    public void RegisterJobCompleteCB(Action<Job> cb)
+    public void RegisterJobCompletedCB(Action<Job> cb)
     {
-        cbJobComplete += cb;
+        cbJobCompleted += cb;
     }
-    public void RegisterJobCancelledCB(Action<Job> cb)
+    public void UnregisterJobCompletedCB(Action<Job> cb)
     {
-        cbJobCanceled += cb;
+        cbJobCompleted -= cb;
     }
-    public void UnregisterJobCompleteCB(Action<Job> cb)
+    public void RegisterJobStoppedCB(Action<Job> cb)
     {
-        cbJobComplete -= cb;
+        cbJobStopped += cb;
     }
-    public void UnregisterJobCancelledCB(Action<Job> cb)
+    public void UnregisterJobStoppedCB(Action<Job> cb)
     {
-        cbJobCanceled -= cb;
+        cbJobStopped -= cb;
+    }
+    public void RegisterJobWorkedCB(Action<Job> cb)
+    {
+        cbJobWorked += cb;
+    }
+    public void UnregisterJobWorkedCB(Action<Job> cb)
+    {
+        cbJobWorked -= cb;
     }
     public void DoWork(float workTime)
     {
+
+        if(HasAllMaterials() == false)
+        {
+            Debug.LogError("Missing materials for current job");
+            return;
+        }
         jobTime -= workTime;
 
         if(jobTime <= 0)
         {
-            if(cbJobComplete != null)
+            if(cbJobCompleted != null)
             {
-                cbJobComplete(this);
+                cbJobCompleted(this);
             }
             
+            if(jobRepeats == false)
+            {
+                if(cbJobStopped != null)
+                {
+                    cbJobStopped(this);
+                }
+            } else
+            {
+                //this is a repeating job
+                jobTime += jobTimeRequired;
+            }
         }
     }
 
+    public void CancelJob()
+    {
+        if(cbJobStopped != null)
+        {
+            cbJobStopped(this);
+        }
+        World.current.jobQueue.Remove(this);
+    }
     public bool HasAllMaterials()
     {
         foreach (LooseObject looseObj in looseObjRequirements.Values)

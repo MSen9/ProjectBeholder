@@ -76,8 +76,7 @@ public class Character : IXmlSerializable
         }
 
         destTile = myJob.tile;
-        myJob.RegisterJobCancelledCB(OnJobEnded);
-        myJob.RegisterJobCompleteCB(OnJobEnded);
+        myJob.RegisterJobStoppedCB(OnJobStopped);
 
         
         pathAStar = new Path_AStar(World.current, currTile, destTile);
@@ -311,7 +310,7 @@ public class Character : IXmlSerializable
         cbCharacterChanged -= cb;
     }
 
-    void OnJobEnded(Job j)
+    void OnJobStopped(Job j)
     {
         //job completed or was cancelled
         if(j != myJob)

@@ -26,7 +26,7 @@ public class World : IXmlSerializable
     Action<Tile> cbTileChanged;
 
 
-    static public World current {get; protected set;}
+    static public World current { get; protected set; }
     //TODO: Most likely will be replaced with dedictaed class for managing job quues that might also be semi-static
     //or self initializing, for now this is just a public member of world
     public JobQueue jobQueue;
@@ -48,7 +48,7 @@ public class World : IXmlSerializable
     public World(int width = 100, int height = 100)
     {
         SetupWorld(width, height);
-       
+
     }
     public Room GetOutsideRoom()
     {
@@ -64,17 +64,23 @@ public class World : IXmlSerializable
 
     public void CheckEmptyRooms()
     {
+        List < Room > delRooms = new List<Room>();
         for (int i = 1; i < rooms.Count; i++)
         {
             if (rooms[i].hasTiles() == false)
             {
-                DeleteRoom(rooms[i]);
+                delRooms.Add(rooms[i]);
+                
             }
+        }
+        foreach(Room r in delRooms)
+        {
+            DeleteRoom(r);
         }
     }
     public void DeleteRoom(Room r)
     {
-        if(r == GetOutsideRoom())
+        if (r == GetOutsideRoom())
         {
             Debug.LogError("Tried to delete outside room");
             return;
@@ -101,7 +107,7 @@ public class World : IXmlSerializable
             {
                 tiles[x, y] = new Tile(this, x, y);
                 tiles[x, y].AddTileTypeUpdate(OnTileChanged);
-                tiles[x, y].room =  GetOutsideRoom(); //always in outside, default room
+                tiles[x, y].room = GetOutsideRoom(); //always in outside, default room
                 GetOutsideRoom().AssignTile(tiles[x, y]);
             }
         }
@@ -111,9 +117,9 @@ public class World : IXmlSerializable
         characters = new List<Character>();
         instObjects = new List<InstalledObject>();
         looseObjManager = new LooseObjManager();
-       
+
     }
-    public World() : this(100, 100)
+    public World()
     {
 
     }
@@ -135,7 +141,8 @@ public class World : IXmlSerializable
     {
         Character c = new Character(t);
         characters.Add(c);
-        if (cbCharacterCreated != null) {
+        if (cbCharacterCreated != null)
+        {
             cbCharacterCreated(c);
         }
 
@@ -182,8 +189,8 @@ public class World : IXmlSerializable
             false
             );
         installedObjectPrototypes.Add("Stockpile", sPile);
-        instObjJobPrototype.Add("Stockpile", new Job(null, "Stockpile", 
-            InstObjActions.JobComplete_InstalledObject,-1f, null));
+        instObjJobPrototype.Add("Stockpile", new Job(null, "Stockpile",
+            InstObjActions.JobComplete_InstalledObject, -1f, null));
 
         InstalledObject generator = new InstalledObject(
             "Generator",
@@ -252,7 +259,7 @@ public class World : IXmlSerializable
     */
 
 
-    public InstalledObject PlaceInstalledObject(string objectType, Tile t)
+    public InstalledObject PlaceInstalledObject(string objectType, Tile t, bool doFloodFill = true)
     {
         //fixme: assumes 1x1 and no rotation
 
@@ -273,7 +280,7 @@ public class World : IXmlSerializable
         instObj.RegisterRemovedCB(OnInstObjRemoved);
 
         //do we need to recalculate our rooms?
-        if (instObj.roomEnclosure)
+        if (instObj.roomEnclosure && doFloodFill)
         {
             Room.DoRoomFloodFill(instObj.tile);
         }
@@ -282,7 +289,7 @@ public class World : IXmlSerializable
             cbIntalledObjectCreated(instObj);
             InvalidateTileGraph();
         }
-        
+
 
         return instObj;
     }
@@ -339,7 +346,8 @@ public class World : IXmlSerializable
 
     public InstalledObject GetInstObjPrototype(string objectType)
     {
-        if (installedObjectPrototypes.ContainsKey(objectType) == false) {
+        if (installedObjectPrototypes.ContainsKey(objectType) == false)
+        {
             Debug.LogError("Inst prototype does not exist: " + objectType);
             return null;
         }
@@ -357,12 +365,22 @@ public class World : IXmlSerializable
         writer.WriteAttributeString("Width", Width.ToString());
         writer.WriteAttributeString("Height", Height.ToString());
 
+        writer.WriteStartElement("Rooms");
+        foreach (Room r in rooms)
+        {
+            writer.WriteStartElement("Room");
+
+            r.WriteXml(writer);
+            writer.WriteEndElement();
+
+        }
+        writer.WriteEndElement();
         writer.WriteStartElement("Tiles");
         for (int x = 0; x < Width; x++)
         {
             for (int y = 0; y < Height; y++)
             {
-                
+
                 writer.WriteStartElement("Tile");
 
                 tiles[x, y].WriteXml(writer);
@@ -372,12 +390,13 @@ public class World : IXmlSerializable
         writer.WriteEndElement();
 
         writer.WriteStartElement("InstObjs");
-        foreach(InstalledObject instObj in instObjects) { 
+        foreach (InstalledObject instObj in instObjects)
+        {
             writer.WriteStartElement("InstObj");
 
             instObj.WriteXml(writer);
             writer.WriteEndElement();
-            
+
         }
         writer.WriteEndElement();
 
@@ -391,6 +410,8 @@ public class World : IXmlSerializable
 
         }
         writer.WriteEndElement();
+
+       
     }
 
     public void ReadXml(XmlReader reader)
@@ -409,6 +430,9 @@ public class World : IXmlSerializable
 
             switch (reader.Name)
             {
+                case "Rooms":
+                    ReadXml_Rooms(reader);
+                    break;
                 case "Tiles":
                     ReadXml_Tiles(reader);
                     break;
@@ -418,10 +442,11 @@ public class World : IXmlSerializable
                 case "Characters":
                     ReadXml_Characters(reader);
                     break;
+                
             }
         }
         //for testing: create investiory items
-        
+
         //LooseObjManager.Add(looseObj);
     }
 
@@ -453,7 +478,7 @@ public class World : IXmlSerializable
                 int y = int.Parse(reader.GetAttribute("Y"));
                 //tiles[x, y].ReadXml(reader);
                 InstalledObject instObj = PlaceInstalledObject(reader.GetAttribute("objectType"), tiles[x, y]);
-                if(instObj != null)
+                if (instObj != null)
                 {
                     instObj.ReadXml(reader);
                 }
@@ -469,7 +494,8 @@ public class World : IXmlSerializable
         //reader.ReadToDescendant("Tile");
         if (reader.ReadToDescendant("Character"))
         {
-            do { 
+            do
+            {
                 int x = int.Parse(reader.GetAttribute("X"));
                 int y = int.Parse(reader.GetAttribute("Y"));
                 //tiles[x, y].ReadXml(reader);
@@ -486,5 +512,22 @@ public class World : IXmlSerializable
     public void OnInstObjRemoved(InstalledObject instObj)
     {
         instObjects.Remove(instObj);
+    }
+
+    public void ReadXml_Rooms(XmlReader reader)
+    {
+        if (reader.ReadToDescendant("Room"))
+        {
+            do
+            {
+                //tiles[x, y].ReadXml(reader);
+                Room r = new Room();
+                AddRoom(r);
+                if (r != null)
+                {
+                    r.ReadXml(reader);
+                }
+            } while (reader.ReadToNextSibling("Room"));
+        }
     }
 }

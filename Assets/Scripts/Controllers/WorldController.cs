@@ -37,7 +37,7 @@ public class WorldController : MonoBehaviour
         }
         else
         {
-            CreateEmptyWorld();
+            CreateEmptyWorld(100,100);
         }
         loadWorld = false;
     }
@@ -94,9 +94,9 @@ public class WorldController : MonoBehaviour
         SceneManager.LoadScene(SceneManager.GetActiveScene().name);
         
     }
-    void CreateEmptyWorld()
+    void CreateEmptyWorld(int width, int height)
     {
-        World = new World();
+        World = new World(width,height);
 
         //instantiate dictionary that tracks which gameObject is rendering which tile data
         Character c = world.CreateCharacter(world.GetTileAt(world.Width / 2, world.Height / 2));
@@ -114,8 +114,6 @@ public class WorldController : MonoBehaviour
         
         World = (World)serializer.Deserialize(reader);
         reader.Close();
-
-        Debug.Log(reader.ToString());
 
         Camera.main.transform.position = new Vector3(World.Width / 2, World.Height / 2, Camera.main.transform.position.z);
     }
