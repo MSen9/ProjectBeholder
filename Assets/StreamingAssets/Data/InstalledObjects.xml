@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<InstalledObjects>
+	<InstalledObject objectType="Wall">
+		<Name>Dumb Wall >:)</Name>
+		<MovementCost>0</MovementCost>
+		<Width>1</Width>
+		<Height>1</Height>
+    <LinksToNeighbor>true</LinksToNeighbor>
+    <EnclosesRoom>true</EnclosesRoom>
+
+    <BuildingJob jobTime="0.5">
+      <LooseObject objectType="Bars"
+                   amount ="5"/>
+    </BuildingJob>
+    
+	</InstalledObject>
+  <InstalledObject objectType="RockWall">
+    <Name>Rock Wall</Name>
+    <MovementCost>0</MovementCost>
+    <Width>1</Width>
+    <Height>1</Height>
+    <LinksToNeighbor>true</LinksToNeighbor>
+    <EnclosesRoom>true</EnclosesRoom>
+  </InstalledObject>
+  
+	<InstalledObject objectType="Door">
+		<Name>Smart Door >:(</Name>
+		<MovementCost>1</MovementCost>
+		<Width>1</Width>
+		<Height>1</Height>
+    <EnclosesRooms>true</EnclosesRooms>
+		<Params>
+			<Param name="openness" type="System.Single" value="0"/>
+			<Param name="is_opening" type="System.Boolean" value="false"/>
+		</Params>
+	</InstalledObject>
+  <InstalledObject objectType ="Generator">
+    <Name>Power Generator</Name>
+    <MovementCost>2</MovementCost>
+    <Width>2</Width>
+    <Height>2</Height>
+  </InstalledObject>
+
+  <InstalledObject objectType ="MiningBase">
+    <Name>Mining Base</Name>
+    <MovementCost>3</MovementCost>
+    <Width>3</Width>
+    <Height>2</Height>
+    <JobSpotOffset>1,-1</JobSpotOffset>
+  </InstalledObject>
+</InstalledObjects>

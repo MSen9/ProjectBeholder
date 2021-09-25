@@ -6,15 +6,11 @@ using System.Xml.Schema;
 using System.Xml.Serialization;
 using System.Xml;
 
-
-
-//installed objects are things like wlals, doors and furniture
-public class InstalledObject : IXmlSerializable
+public class InstalledObject : IXmlSerializable, ISelectableInterface
 {
     protected Dictionary<string, object> instObjParameters;
-    protected Action<InstalledObject, object> updateActions;
-
-    public Func<InstalledObject, Enterability> IsEnterable;
+    protected Action<InstalledObject,object> updateActions;
+    protected Func<InstalledObject, Enterability> isEnterableActions;
    
 
     public int width;
@@ -27,8 +23,56 @@ public class InstalledObject : IXmlSerializable
 
     public Vector2 jobSpotOffset = Vector2.zero;
     List<Job> jobs;
+    //This represents the BASE tile of object, but in practice, large objects may actually require multiple times
+    public Tile tile;
+    //This "objecttype" will be queries by the visual system 
+    private string _Name = null;
+    public string Name
+    {
+        get
+        {
+            if(_Name == null || _Name == "")
+            {
+                return objectType;
+            }
+            return _Name;
+        }
+        set
+        {
+            _Name = value;
+        }
+    }
+    public string objectType
+    {
+        get; protected set;
+    }
+
+    public bool linksToNeighbor
+    {
+        get; protected set;
+    }
+
+    //used for walking over beds and such
+    //SPECIAL: if movement cost is 0, then this time is impasssible (wall)
+    public float movementCost
+    {
+        get; protected set;
+
+    }
+
+    public bool roomEnclosure;
 
     //public Job constructionJobPrototype;
+    public InstalledObject()
+    {
+        funcPositionValidation = __IsValidPosition;
+        instObjParameters = new Dictionary<string, object>();
+        jobs = new List<Job>();
+        linksToNeighbor = false;
+        roomEnclosure = false;
+        width = 1;
+        height = 1;
+    }
 
     virtual public InstalledObject Clone()
     {
@@ -37,6 +81,7 @@ public class InstalledObject : IXmlSerializable
     public InstalledObject(InstalledObject proto)
     {
         this.objectType = proto.objectType;
+        this.Name = proto.Name;
         this.movementCost = proto.movementCost;
         this.roomEnclosure = proto.roomEnclosure;
         this.width = proto.width;
@@ -46,13 +91,16 @@ public class InstalledObject : IXmlSerializable
         this.instObjParameters = new Dictionary<string, object>(proto.instObjParameters);
         if (proto.updateActions != null)
         {
-            this.updateActions = (Action<InstalledObject, object>)proto.updateActions.Clone();
+            this.updateActions = proto.updateActions;
+        }
+        if (proto.isEnterableActions != null)
+        {
+            this.isEnterableActions = proto.isEnterableActions;
         }
         if (proto.funcPositionValidation != null)
         {
             this.funcPositionValidation = (Func<Tile, bool>)proto.funcPositionValidation.Clone();
         }
-        this.IsEnterable = proto.IsEnterable;
         this.jobs = new List<Job>(proto.jobs);
         this.jobSpotOffset = proto.jobSpotOffset;
     }
@@ -66,7 +114,6 @@ public class InstalledObject : IXmlSerializable
         this.width = width;
         this.height = height;
         this.linksToNeighbor = linksToNeighbor;
-
         this.funcPositionValidation = __IsValidPosition;
         this.instObjParameters = new Dictionary<string, object>();
         this.jobs = new List<Job>();
@@ -76,9 +123,22 @@ public class InstalledObject : IXmlSerializable
 
         if(updateActions != null)
         {
+            
             updateActions(this, deltaTime);
+            
+            //InstObjActions.CallUpdateFuncs(updateActions, this,deltaTime);
         }
     }
+    public Enterability IsEnterable()
+    {
+        if(isEnterableActions == null)
+        {
+            return Enterability.Yes;
+        }
+        //return InstObjActions.CallEnterabilityFuncs(isEnterableActions, this);
+        return isEnterableActions(this);
+    }
+
     public object GetParameter(string key, object defaultval = null)
     {
         if(instObjParameters.ContainsKey(key) == false)
@@ -88,9 +148,29 @@ public class InstalledObject : IXmlSerializable
         return instObjParameters[key];
     }
 
+    public bool GetParameterBool(string key)
+    {
+        return Convert.ToBoolean(GetParameter(key));
+    }
+    public float GetParameterFloat(string key)
+    {
+        return Convert.ToSingle(GetParameter(key));
+    }
+    public int GetParameterInt(string key)
+    {
+        return Convert.ToInt32(GetParameter(key));
+    }
+
     public void SetParameter(string key, object val)
     {
-        instObjParameters[key] = val;
+        if (instObjParameters.ContainsKey(key))
+        {
+            instObjParameters[key] = val;
+        } else
+        {
+            
+        }
+       
     }
 
     public void ChangeParameter(string key, object val)
@@ -101,29 +181,42 @@ public class InstalledObject : IXmlSerializable
             return;
         }
 
-
         Type type = instObjParameters[key].GetType();
         if (type.Equals(typeof(float)))
         {
-            instObjParameters[key] = (float)instObjParameters[key] + (float)val;
-        }else if (type.Equals(typeof(string)))
+            instObjParameters[key] = (float)instObjParameters[key] + Convert.ToSingle(val);
+        }
+        else if (type.Equals(typeof(double)))
         {
-            instObjParameters[key] = (string)instObjParameters[key] + (string)val;
+            instObjParameters[key] = (double)instObjParameters[key] + Convert.ToDouble(val);
+        }
+        else if (type.Equals(typeof(string)))
+        {
+            instObjParameters[key] = (string)instObjParameters[key] + Convert.ToString(val);
         }else if (type.Equals(typeof(int)))
         {
-            instObjParameters[key] = (int)instObjParameters[key] + (int)val;
+            instObjParameters[key] = (int)instObjParameters[key] + Convert.ToInt32(val);
         }
-
     }
 
-    public void RegisterUpdateAction(Action<InstalledObject,object> a)
+    public void RegisterUpdateAction(Action<InstalledObject,object> cb)
     {
-        updateActions += a;
+        updateActions += cb;
     }
 
-    public void UnregisterUpdateAction(Action<InstalledObject, object> a)
+    public void UnregisterUpdateAction(Action<InstalledObject, object> cb)
     {
-        updateActions -= a;
+        updateActions -= cb;
+    }
+
+    public void RegisterIsEnterableAction(Func<InstalledObject,Enterability> cb)
+    {
+        isEnterableActions += cb;
+    }
+
+    public void UnregisterIsEnterableAction(Func<InstalledObject, Enterability> cb)
+    {
+        isEnterableActions += cb;
     }
 
     public void RegisterRemovedCB(Action<InstalledObject> a)
@@ -135,28 +228,7 @@ public class InstalledObject : IXmlSerializable
     {
         cbOnRemoved -= a;
     }
-    //This represents the BASE tile of object, but in practice, large objects may actually require multiple times
-    public Tile tile;
-    //This "objecttype" will be queries by the visual system 
-    public string objectType
-    {
-        get; protected set;
-    }
 
-    public bool linksToNeighbor
-    {
-        get; protected set;
-    }
-
-    //used for walking over beds and such
-    //SPECIAL: if movement cost is 0, then this time is impasssible (wall)
-    public float movementCost{
-        get; protected set;
-
-    }
-
-    public bool roomEnclosure;
-    
     //this is a multiplier. So a value of 2 here means you move twice as slowly
     
     //TODO: Implement larger objects
@@ -165,11 +237,7 @@ public class InstalledObject : IXmlSerializable
     
 
     //empty constructor is used for serialization
-    public InstalledObject()
-    {
-        instObjParameters = new Dictionary<string, object>();
-    }
-
+    
     //copy constructor
 
     
@@ -215,8 +283,6 @@ public class InstalledObject : IXmlSerializable
 
 
         obj.tile = tile;
-
-        //FIXME: This assumes we are 1x1
         if (tile.PlaceInstalledObject(obj) == false) {
             //for some reason, we weren't able to place our object inthis tile
             //probably it was already occupied
@@ -250,7 +316,7 @@ public class InstalledObject : IXmlSerializable
             for (int y_off = t.Y; y_off < t.Y + height; y_off++)
             {
                 Tile t2 = World.current.GetTileAt(x_off, y_off);
-                if (t2 != null && t2.tileType != TileType.Floor)
+                if (t2 != null && t2.TileType != TileType.Floor)
                 {
                     return false;
                 }
@@ -298,12 +364,110 @@ public class InstalledObject : IXmlSerializable
 
         }
     }
+    public void ReadXmlPrototype(XmlReader reader_parent)
+    {
+        //string functionName = "";
+        objectType = reader_parent.GetAttribute("objectType");
 
+        XmlReader reader = reader_parent.ReadSubtree();
+        while (reader.Read())
+        {
+
+
+            switch (reader.Name)
+            {
+                case "Name":
+                    reader.Read();
+                    Name = reader.ReadContentAsString();
+                    break;
+                case "MovementCost":
+                    reader.Read();
+                    movementCost = reader.ReadContentAsFloat();
+                    break;
+                case "Width":
+                    reader.Read();
+                    width = reader.ReadContentAsInt();
+                    break;
+                case "Height":
+                    reader.Read();
+                    height = reader.ReadContentAsInt();
+                    break;
+                case "LinksToNeighbor":
+                    reader.Read();
+                    linksToNeighbor = reader.ReadContentAsBoolean();
+                    break;
+                case "EnclosesRoom":
+                    reader.Read();
+                    linksToNeighbor = reader.ReadContentAsBoolean();
+                    break;
+                case "JobSpotOffset":
+                    reader.Read();
+                    string[] coords = reader.ReadContentAsString().Split(',');
+                    jobSpotOffset.x = Convert.ToInt32(coords[0]);
+                    jobSpotOffset.y = Convert.ToInt32(coords[1]);
+                    break;
+                case "Params":
+                    //reader.Read();
+                    ReadXmlParams(reader);
+                    break;
+                /*
+           case "OnUpdate":
+               //reader.Read();
+               functionName = reader.GetAttribute("FunctionName");
+               RegisterUpdateAction(functionName);
+               break;
+
+           case "IsEnterable":
+               //reader.Read();
+               functionName = reader.GetAttribute("FunctionName");
+               RegisterIsEnterableAction(functionName);
+               break;
+               */
+                case "BuildingJob":
+                    float jobTime = float.Parse(reader.GetAttribute("jobTime"));
+
+                    List<LooseObject> looseObjs = new List<LooseObject>();
+
+                    XmlReader lObjs_Reader = reader.ReadSubtree();
+                    while (lObjs_Reader.Read())
+                    {
+                        if(lObjs_Reader.Name == "LooseObject")
+                        {
+                            //Found an inv requiremnt, so adding it
+                            LooseObject looseObj = new LooseObject(
+                                lObjs_Reader.GetAttribute("objectType"),
+                                0,
+                                int.Parse(lObjs_Reader.GetAttribute("amount"))
+                            );
+                            looseObjs.Add(looseObj);
+                        }
+
+                      
+                    }
+                    Job j = new Job(null,objectType, InstObjActions.JobComplete_InstalledObject, jobTime,looseObjs.ToArray());
+                    World.current.SetInstObjJobPrototype(j, this);
+                    break;
+            }
+        }
+         //Read in the param tag
+    }
+
+    void GetLinksToSprites(int startX, int startY, int pixelsPerUnit, string baseName)
+    {
+
+    }
     public void ReadXml(XmlReader reader)
     {
         //Object type have already been set as well as tile so just read extra data
         //objectType = reader.GetAttribute("objectType");
         movementCost = float.Parse(reader.GetAttribute("movementCost"));
+
+        ReadXmlParams(reader);
+    } 
+    public void ReadXmlParams(XmlReader reader)
+    {
+        //Object type have already been set as well as tile so just read extra data
+        //objectType = reader.GetAttribute("objectType");
 
         //Type = (TileType)Enum.Parse(typeof(TileType), reader.GetAttribute("Type"));
         if (reader.ReadToDescendant("Param"))
@@ -329,7 +493,7 @@ public class InstalledObject : IXmlSerializable
                 }
                 if(v != null)
                 {
-                    instObjParameters[k] = v;
+                    instObjParameters.Add(k,v);
                 } else
                 {
 
@@ -400,5 +564,20 @@ public class InstalledObject : IXmlSerializable
         
         jobs.Clear();
 
+    }
+
+    public string GetName()
+    {
+        throw new NotImplementedException();
+    }
+
+    public string GetDescription()
+    {
+        throw new NotImplementedException();
+    }
+
+    public string getHitPointString()
+    {
+        throw new NotImplementedException();
     }
 }

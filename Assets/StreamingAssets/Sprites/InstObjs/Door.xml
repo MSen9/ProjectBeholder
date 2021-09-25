@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Sprites>
+  <Sprite name="Door" x="16" y="16" w="32" h="32"/>
+</Sprites>

@@ -5,7 +5,7 @@ using System;
 using System.Xml.Schema;
 using System.Xml.Serialization;
 using System.Xml;
-
+using System.IO;
 
 public class World : IXmlSerializable
 {
@@ -45,7 +45,7 @@ public class World : IXmlSerializable
             return height;
         }
     }
-    public World(int width = 100, int height = 100)
+    public World(int width = 200, int height = 50)
     {
         SetupWorld(width, height);
 
@@ -91,10 +91,10 @@ public class World : IXmlSerializable
     }
     void SetupWorld(int width, int height)
     {
+
         //set the current world to be this world
         //Todo: do we need to do any cleanup of the old world?
         current = this;
-
         jobQueue = new JobQueue();
         this.width = width;
         this.height = height;
@@ -106,13 +106,15 @@ public class World : IXmlSerializable
             for (int y = 0; y < height; y++)
             {
                 tiles[x, y] = new Tile(this, x, y);
+                
                 tiles[x, y].AddTileTypeUpdate(OnTileChanged);
                 tiles[x, y].room = GetOutsideRoom(); //always in outside, default room
                 GetOutsideRoom().AssignTile(tiles[x, y]);
+                tiles[x, y].TileType = TileType.Floor;
             }
         }
         Debug.Log("World created with " + width + "," + height);
-        CreateObjectPrototypes();
+        CreateInstalledObjectPrototypes();
 
         characters = new List<Character>();
         instObjects = new List<InstalledObject>();
@@ -123,6 +125,7 @@ public class World : IXmlSerializable
     {
 
     }
+
 
     public void Update(float deltaTime)
     {
@@ -149,6 +152,63 @@ public class World : IXmlSerializable
 
         return c;
     }
+    
+    public void SetInstObjJobPrototype(Job j, InstalledObject instObj)
+    {
+        instObjJobPrototype[instObj.objectType] = j;
+    }
+
+
+    void LoadInstObjLua()
+    {
+
+        string filePath = System.IO.Path.Combine(Application.streamingAssetsPath, "Lua");
+        filePath = System.IO.Path.Combine(filePath, "InstalledObjects.lua");
+        string myLuaCode = System.IO.File.ReadAllText(filePath);
+        //instantiate singleton
+        //new InstObjActions(myLuaCode);
+    }
+    void CreateInstalledObjectPrototypes()
+    {
+        //LoadInstObjLua();
+        installedObjectPrototypes = new Dictionary<string, InstalledObject>();
+        instObjJobPrototype = new Dictionary<string, Job>();
+
+        //read INST OBJ prototype XML file here
+        //opening the file ourselves
+        string filePath = System.IO.Path.Combine(Application.streamingAssetsPath, "Data");
+        filePath = System.IO.Path.Combine(filePath, "InstalledObjects.xml");
+        string instObjXmlText = System.IO.File.ReadAllText(filePath );
+        XmlTextReader reader = new XmlTextReader(new StringReader(instObjXmlText));
+        if (reader.ReadToDescendant("InstalledObjects"))
+        {
+            if (reader.ReadToDescendant("InstalledObject"))
+            {
+                do
+                {
+                    InstalledObject instObj = new InstalledObject();
+                    instObj.ReadXmlPrototype(reader);
+                    installedObjectPrototypes.Add(instObj.objectType, instObj);
+                } while (reader.ReadToNextSibling("InstalledObject"));
+            } else
+            {
+                Debug.LogError("The inst obj definiton file has no InstObj elements");
+            }
+            
+        }
+
+
+        //adds relevant actions to applicable objects
+        //TODO: Have this loaded in from the XML, allow for c# modding
+        installedObjectPrototypes["Door"].RegisterIsEnterableAction(InstObjActions.Door_IsEnterable);
+        installedObjectPrototypes["Door"].RegisterUpdateAction(InstObjActions.Door_UpdateAction);
+        installedObjectPrototypes["MiningBase"].RegisterUpdateAction(InstObjActions.MiningBase_UpdateAction);
+        //This bit will come from parsing a LUA file later
+        //We will still need to check inst obj prototypes later
+        //installedObjectPrototypes["Door"].RegisterUpdateAction(InstObjActions.Door_UpdateAction);
+        //installedObjectPrototypes["Door"].IsEnterable = InstObjActions.Door_IsEnterable;
+    }
+    /*
     void CreateObjectPrototypes()
     {
 
@@ -163,7 +223,7 @@ public class World : IXmlSerializable
             true
             );
         installedObjectPrototypes.Add("Wall", wallPrototype);
-
+        wallPrototype.Name = "Dumb Wall >:)";
         //instObjJobPrototype.Add("Wall", new Job(null, "Wall", InstObjActions.JobComplete_InstalledObject, 1f, new LooseObject[] { new LooseObject("Bars", 0, 5)}));
         InstalledObject doorPrototype = new InstalledObject(
             "Door",
@@ -217,7 +277,7 @@ public class World : IXmlSerializable
         installedObjectPrototypes["MiningBase"].RegisterUpdateAction(InstObjActions.MiningBase_UpdateAction);
 
     }
-
+    */
 
     public Tile GetTileAt(int x, int y)
     {

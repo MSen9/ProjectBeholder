@@ -6,9 +6,10 @@ using UnityEngine.UI;
 public class LooseObjSpriteController : MonoBehaviour
 {
     public GameObject looseObjTextCanvas;
+    string LOOSE_OBJ_SPRITE_FOLDER = "LooseObjs_";
     Dictionary<LooseObject, GameObject> looseObjGameObjectMap;
 
-    Dictionary<string, Sprite> looseObjSprites;
+    //Dictionary<string, Sprite> looseObjSprites;
     LooseObjManager looseObjManager;
     // Start is called before the first frame update
 
@@ -21,6 +22,7 @@ public class LooseObjSpriteController : MonoBehaviour
     {
         looseObjManager = WorldController.Instance.world.looseObjManager;
         looseObjGameObjectMap = new Dictionary<LooseObject, GameObject>();
+        /*
         looseObjSprites = new Dictionary<string, Sprite>();
         Sprite[] sprites = Resources.LoadAll<Sprite>("Sprites/LooseObjs/");
         foreach (Sprite s in sprites)
@@ -28,7 +30,7 @@ public class LooseObjSpriteController : MonoBehaviour
             //Debug.Log(s);
             looseObjSprites[s.name] = s;
         }
-
+        */
         looseObjManager.RegisterLooseObjCreated(OnLooseObjectCreated);
 
        //check for pre-existing
@@ -58,7 +60,7 @@ public class LooseObjSpriteController : MonoBehaviour
         SpriteRenderer inst_sr = looseObj_go.AddComponent<SpriteRenderer>();
         looseObj_go.transform.SetParent(this.transform, true);
 
-        inst_sr.sprite = looseObjSprites[looseObj.objectType]; //FIXME
+        inst_sr.sprite = SpriteManager.current.sprites[LOOSE_OBJ_SPRITE_FOLDER+looseObj.objectType]; 
         inst_sr.sortingLayerName = "LooseObjects";
 
         if(looseObj.maxStackSize > 1)

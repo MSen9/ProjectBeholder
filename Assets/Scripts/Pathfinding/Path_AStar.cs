@@ -6,7 +6,7 @@ public class Path_AStar
 {
     //Try D* Lite if this is in need of optimization
     Stack<Tile> path;
-    public Path_AStar(World world, Tile tileStart, Tile tileEnd)
+    public Path_AStar(World world, Tile tileStart, Tile tileEnd, string objectType = null)
     {
         path = new Stack<Tile>();
         if (world.tileGraph == null)
@@ -22,7 +22,7 @@ public class Path_AStar
 
             //right now we're going to manually add the start tile to the list of valid nodes.
         }
-        if (nodes.ContainsKey(tileEnd) == false)
+        if (tileEnd != null && nodes.ContainsKey(tileEnd) == false)
         {
             Debug.LogError("Path_AStar: Invalid end for path");
         }
@@ -34,7 +34,13 @@ public class Path_AStar
 
 
         Path_Node<Tile> start = nodes[tileStart];
-        Path_Node<Tile> end = nodes[tileEnd];
+
+
+        Path_Node<Tile> end = null;
+        if (tileEnd != null)
+        {
+            end = nodes[tileEnd];
+        }
         //Make sure our start/end tiles are in the list of nodes
         
         List<Path_Node<Tile>> ClosedSet = new List<Path_Node<Tile>>();
@@ -65,7 +71,7 @@ public class Path_AStar
         {
             Path_Node<Tile> current = OpenSet.Dequeue();
 
-            if(current == end)
+            if((end != null && current == end) || (objectType != null && current.data.looseObject != null && objectType == current.data.looseObject.objectType))
             {
                 //TODO: Return reconsturct path
                 reconstructPath(cameFrom, current);
@@ -109,6 +115,11 @@ public class Path_AStar
 
     float heuristicCostEstimate(Path_Node<Tile> a, Path_Node<Tile> b)
     {
+        if (b == null)
+        {
+            //we have no fixed destination, return whatever direction
+            return 0;
+        }
         return Mathf.Sqrt(Mathf.Pow(a.data.X - b.data.X, 2) + Mathf.Pow(a.data.Y - b.data.Y, 2));
     }
 
@@ -155,5 +166,11 @@ public class Path_AStar
         if (path == null)
             return 0;
         return path.Count;
+    }
+
+    public Tile EndTile()
+    {
+        Tile[] tArray = path.ToArray();
+        return tArray[tArray.Length - 1];
     }
 }

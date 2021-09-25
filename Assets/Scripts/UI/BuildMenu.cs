@@ -19,10 +19,8 @@ public class BuildMenu : MonoBehaviour
             go.transform.SetParent(this.transform);
 
             go.name = "Button - Build " + s;
-
-            go.transform.GetComponentInChildren<Text>().text = s;
-
-
+            string objectName = World.current.installedObjectPrototypes[s].Name;
+            go.transform.GetComponentInChildren<Text>().text = objectName ;
 
             Button b = go.GetComponent<Button>();
             string objectId = s;

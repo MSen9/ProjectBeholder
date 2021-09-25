@@ -2,7 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using System;
-public class LooseObject 
+public class LooseObject: ISelectableInterface
 {
     public string objectType;
     public int maxStackSize = 0;
@@ -62,5 +62,20 @@ public class LooseObject
     public void UnregisterLooseObjChanged(Action<LooseObject> callbackFunc)
     {
         cbLooseObjectChanged -= callbackFunc;
+    }
+
+    public string GetName()
+    {
+        throw new NotImplementedException();
+    }
+
+    public string GetDescription()
+    {
+        throw new NotImplementedException();
+    }
+
+    public string getHitPointString()
+    {
+        throw new NotImplementedException();
     }
 }

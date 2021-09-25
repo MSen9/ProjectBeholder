@@ -26,10 +26,10 @@ public class SoundController : MonoBehaviour
             if (ac == null)
             {
                 //load default on create sound.
-                ac = Resources.Load<AudioClip>("Sounds/WallPlace");
+                //ac = Resources.Load<AudioClip>("Sounds/WallPlace");
                 return;
             }
-            AudioSource.PlayClipAtPoint(ac, Camera.main.transform.position);
+            //AudioSource.PlayClipAtPoint(ac, Camera.main.transform.position);
             soundPlayed = true;
         }
 
@@ -39,8 +39,13 @@ public class SoundController : MonoBehaviour
         if (soundPlayed == false)
         {
             AudioClip ac = Resources.Load<AudioClip>("Sounds/TilePlace");
-            
-            AudioSource.PlayClipAtPoint(ac, new Vector3(tile_data.X, tile_data.Y, Camera.main.transform.position.z));
+            if (ac == null)
+            {
+                //load default on create sound.
+                //ac = Resources.Load<AudioClip>("Sounds/WallPlace");
+                return;
+            }
+            //AudioSource.PlayClipAtPoint(ac, new Vector3(tile_data.X, tile_data.Y, Camera.main.transform.position.z));
             soundPlayed = true;
         }
         

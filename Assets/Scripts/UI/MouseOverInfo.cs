@@ -12,15 +12,18 @@ public class MouseOverInfo : MonoBehaviour
     public GameObject tileType;
     public GameObject roomID;
     public GameObject instObjType;
+    
 
     Text tileTypeText;
     Text roomIdText;
     Text instObjText;
+    
     void Start()
     {
         tileTypeText = tileType.GetComponent<Text>();
         roomIdText = roomID.GetComponent<Text>();
         instObjText = instObjType.GetComponent<Text>();
+      
         if (tileTypeText == null || roomIdText == null || instObjText == null)
         {
             Debug.LogError("MouseOverTileTypeText: No 'text' component on this go");
@@ -42,10 +45,10 @@ public class MouseOverInfo : MonoBehaviour
     {
         Tile t = mouseController.GetMouseOverTile();
         if (t != null) { 
-            tileTypeText.text = "Tile Type: " + t.tileType.ToString();
+            tileTypeText.text = "Tile Type: " + t.TileType.ToString();
             roomIdText.text = "Room ID: " + World.current.rooms.IndexOf(t.room);
             if(t.installedObject != null) { 
-                instObjText.text = "InstObj type: " +  t.installedObject.objectType;
+                instObjText.text = "InstObj type: " +  t.installedObject.Name;
             } else
             {
                 instObjText.text = "InstObj type: null";

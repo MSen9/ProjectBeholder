@@ -8,8 +8,8 @@ public class InstObjSpriteController : MonoBehaviour
 {
 
     Dictionary<InstalledObject, GameObject> installedGameObjectMap;
-
-    Dictionary<string, Sprite> installedObjectSprites;
+    string INST_OBJ_FOLDER = "InstObjs_";
+    //public Dictionary<string, Sprite> installedObjectSprites;
     // Start is called before the first frame update
 
     World world
@@ -18,13 +18,15 @@ public class InstObjSpriteController : MonoBehaviour
     }
     void Start()
     {
-        installedObjectSprites = new Dictionary<string, Sprite>();
+        //installedObjectSprites = new Dictionary<string, Sprite>();
+        /*
         Sprite[] sprites = Resources.LoadAll<Sprite>("Sprites/InstObjs/");
         foreach (Sprite s in sprites)
         {
             //Debug.Log(s);
             installedObjectSprites[s.name] = s;
         }
+        */
         installedGameObjectMap = new Dictionary<InstalledObject, GameObject>();
         world.RegisterInstalledObjectCreated(OnInstalledObjectCreated);
 
@@ -34,13 +36,10 @@ public class InstObjSpriteController : MonoBehaviour
             OnInstalledObjectCreated(instObj);
         }
     }
+    public void LoadInstObjSprite(int x, int y, int w, int h, int pixelsPerUnit, string spriteName)
+    {
 
-    //float randomizeTileTimer =  2f;
-
-
-
-
-
+    }
     public void OnInstalledObjectCreated(InstalledObject obj)
     {
         //created a visual gameobject linked to this data.
@@ -115,7 +114,7 @@ public class InstObjSpriteController : MonoBehaviour
             {
 
                 GameObject inst_go = installedGameObjectMap[obj];
-                float openVal = (float)obj.GetParameter("openness");
+                float openVal = obj.GetParameterFloat("openness");
                 if(inst_go.transform.rotation.z == 0 || inst_go.transform.rotation.z == 180)
                 {
                     inst_go.transform.position = new Vector3(
@@ -127,7 +126,7 @@ public class InstObjSpriteController : MonoBehaviour
                 }
                     
             }
-            return installedObjectSprites[obj.objectType];
+            return SpriteManager.current.sprites[INST_OBJ_FOLDER + obj.objectType];
         }
 
         //otherwise, the sprite name is more complicated
@@ -156,7 +155,7 @@ public class InstObjSpriteController : MonoBehaviour
         {
             spriteName += "W";
         }
-        if (installedObjectSprites.ContainsKey(spriteName) == false)
+        if (SpriteManager.current.sprites.ContainsKey(INST_OBJ_FOLDER+spriteName) == false)
         {
             Debug.LogError("No spriteName of name: " + spriteName);
             return null;
@@ -166,17 +165,17 @@ public class InstObjSpriteController : MonoBehaviour
         //FIXME: Hard coding, needs to be generalized
         
 
-        return installedObjectSprites[spriteName];
+        return SpriteManager.current.sprites[INST_OBJ_FOLDER + spriteName];
     }
     public Sprite GetSpriteForInstalledObject(string objType) {
-        if (installedObjectSprites.ContainsKey(objType))
+        if (SpriteManager.current.sprites.ContainsKey(INST_OBJ_FOLDER+objType))
 
         {
-            return installedObjectSprites[objType];
+            return SpriteManager.current.sprites[INST_OBJ_FOLDER+objType];
         }
-        if (installedObjectSprites.ContainsKey(objType + "_"))
+        if (SpriteManager.current.sprites.ContainsKey(INST_OBJ_FOLDER+objType + "_"))
         {
-            return installedObjectSprites[objType+"_"];
+            return SpriteManager.current.sprites[INST_OBJ_FOLDER+objType + "_"];
         }
 
         Debug.LogError("No spriteName of name: " + objType);

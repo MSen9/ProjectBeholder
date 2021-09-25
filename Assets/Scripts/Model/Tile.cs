@@ -6,29 +6,34 @@ using System.Xml.Schema;
 using System.Xml.Serialization;
 using System.Xml;
 
-
 public enum TileType { Empty, Floor };
 public enum Enterability { Yes, Never, Soon};
 
-public class Tile : IXmlSerializable
+
+public class Tile : IXmlSerializable, ISelectableInterface
 {
     
     Action<Tile> cbTileChanged;
     public LooseObject looseObject;
-
-    public Room room;
-    float baseMoveCost = 1;
     public InstalledObject installedObject
     {
         get; protected set;
     }
+
+    public List<Character> characters
+    {
+        get; protected set;
+    }
+    public Room room;
+    float baseMoveCost = 1;
+    
 
     public Job pendingInstObjJob;
 
     int x;
     int y;
     TileType trueTileType;
-    public TileType tileType
+    public TileType TileType
     {
         get
         {
@@ -53,7 +58,7 @@ public class Tile : IXmlSerializable
     {
         get
         {
-            if(tileType == TileType.Empty)
+            if(TileType == TileType.Empty)
             {
                 return 0;
             }
@@ -71,6 +76,7 @@ public class Tile : IXmlSerializable
     {
         this.x = x;
         this.y = y;
+        characters = new List<Character>();
     }
 
     public void AddTileTypeUpdate(Action<Tile> callback)
@@ -236,7 +242,7 @@ public class Tile : IXmlSerializable
 
     public void WriteXml(XmlWriter writer)
     {
-        writer.WriteAttributeString("Type", tileType.ToString());
+        writer.WriteAttributeString("Type", TileType.ToString());
         writer.WriteAttributeString("X", X.ToString());
         writer.WriteAttributeString("Y", Y.ToString());
         writer.WriteAttributeString("Rm", World.current.rooms.IndexOf(room).ToString());
@@ -245,7 +251,7 @@ public class Tile : IXmlSerializable
     public void ReadXml(XmlReader reader)
     {
        
-        tileType = (TileType)Enum.Parse(typeof(TileType), reader.GetAttribute("Type"));
+        TileType = (TileType)Enum.Parse(typeof(TileType), reader.GetAttribute("Type"));
         int roomID = int.Parse(reader.GetAttribute("Rm"));
         if(roomID != -1)
         {
@@ -264,9 +270,9 @@ public class Tile : IXmlSerializable
             return Enterability.Never;
         }
         //check our instObj to see if it has a special block on enterability
-        if(installedObject != null && installedObject.IsEnterable != null)
+        if(installedObject != null)
         {
-            return installedObject.IsEnterable(installedObject);
+            return installedObject.IsEnterable();
         }
          
         return Enterability.Yes;
@@ -287,5 +293,45 @@ public class Tile : IXmlSerializable
     public Tile West()
     {
         return World.current.GetTileAt(X-1, Y + 1);
+    }
+
+    public void CharacterEnter(Character c)
+    {
+        if (characters.Contains(c))
+        {
+            Debug.LogError("Adding character to tile they were already in");
+        } else
+        {
+            characters.Add(c);
+        }
+        
+    }
+
+    public void CharacterLeave(Character c)
+    {
+        if (characters.Contains(c) == false)
+        {
+            Debug.LogError("Tried to take character out of tile they already left");
+        }
+        else
+        {
+            characters.Remove(c);
+        }
+
+    }
+
+    public string GetName()
+    {
+        throw new NotImplementedException();
+    }
+
+    public string GetDescription()
+    {
+        throw new NotImplementedException();
+    }
+
+    public string getHitPointString()
+    {
+        throw new NotImplementedException();
     }
 }

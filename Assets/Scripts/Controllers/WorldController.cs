@@ -37,7 +37,9 @@ public class WorldController : MonoBehaviour
         }
         else
         {
-            CreateEmptyWorld(100,100);
+            CreateEmptyWorld(200,50);
+            //world generation code
+            MapGeneration();
         }
         loadWorld = false;
     }
@@ -99,11 +101,50 @@ public class WorldController : MonoBehaviour
         World = new World(width,height);
 
         //instantiate dictionary that tracks which gameObject is rendering which tile data
-        Character c = world.CreateCharacter(world.GetTileAt(world.Width / 2, world.Height / 2));
-
-        Camera.main.transform.position = new Vector3(World.Width / 2, World.Height / 2, Camera.main.transform.position.z);
+        Character c = world.CreateCharacter(world.GetTileAt(10, world.Height / 2));
+        world.CreateCharacter(world.GetTileAt(6, world.Height / 2));
+        world.CreateCharacter(world.GetTileAt(8, world.Height / 2));
+        Camera.main.transform.position = new Vector3(12, World.Height / 2, Camera.main.transform.position.z);
     }
 
+    void MapGeneration()
+    {
+        //function for creating the world
+        //For now: create a wavey line of rock walls about ~20 tiles right the start, then make everything else pure rock
+        int START_ROCK = 20;
+        for (int x = 20; x < World.Width; x++)
+        {
+            for (int y = 0; y < World.Height; y++)
+            {
+                World.PlaceInstalledObject("RockWall", World.GetTileAt(x, y), false);
+            }
+        }
+        int ROCK_MAX = 20;
+        int ROCK_MIN = 14;
+        int rockOffset = 19;
+        for (int y = 0; y < World.Height; y++)
+        {
+            for (int x = START_ROCK-1; x >= rockOffset; x--)
+            {
+                World.PlaceInstalledObject("RockWall", World.GetTileAt(x, y), false);
+            }
+            float moveOdds = UnityEngine.Random.Range(0.0f, 1.0f);
+
+            if(moveOdds > .75)
+            {
+                if(rockOffset > ROCK_MIN)
+                {
+                    rockOffset--;
+                }
+            } else if(moveOdds < .25)
+            {
+                if (rockOffset < ROCK_MAX)
+                {
+                    rockOffset++;
+                }
+            }
+        }
+    }
 
     void CreateWorldFromSave()
     {

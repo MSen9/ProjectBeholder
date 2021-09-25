@@ -5,29 +5,46 @@ using UnityEngine;
 using System.Xml.Schema;
 using System.Xml.Serialization;
 using System.Xml;
-public class Character : IXmlSerializable
+public class Character : IXmlSerializable, ISelectableInterface
 {
     public float X
     {
         get
         {
-            return Mathf.Lerp(currTile.X, nextTile.X, movementPercentage);
+            return Mathf.Lerp(CurrTile.X, nextTile.X, movementPercentage);
         }
     }
     public float Y
     {
         get
         {
-            return Mathf.Lerp(currTile.Y, nextTile.Y, movementPercentage);
+            return Mathf.Lerp(CurrTile.Y, nextTile.Y, movementPercentage);
         }
     }
-    public Tile currTile
+    Tile _currTile;
+    public Tile CurrTile
     {
-        get; protected set;
+        get {
+            return _currTile;
+        }
+        protected set
+        {
+            if(value != _currTile)
+            {
+                if(_currTile != null)
+                {
+                    _currTile.CharacterLeave(this);
+                }
+               
+                _currTile = value;
+
+                _currTile.CharacterEnter(this);
+            }
+        }
     }
 
     Tile _destTile;
-    Tile destTile
+    Tile DestTile
     {
         get
         {
@@ -59,14 +76,16 @@ public class Character : IXmlSerializable
     }
     public Character(Tile tile)
     {
-        this.currTile = tile;
-        this.destTile = tile;
+        this.CurrTile = tile;
+        this.DestTile = tile;
         this.nextTile = tile;
 
     }
 
+    float jobSearchCooldown = 0;
     void GetNewJob()
     {
+        
         //grab a new job
         //check to see if the job tile is reachable:
         myJob = World.current.jobQueue.Dequeue();
@@ -75,31 +94,40 @@ public class Character : IXmlSerializable
             return;
         }
 
-        destTile = myJob.tile;
+        DestTile = myJob.tile;
         myJob.RegisterJobStoppedCB(OnJobStopped);
 
         
-        pathAStar = new Path_AStar(World.current, currTile, destTile);
+        pathAStar = new Path_AStar(World.current, CurrTile, DestTile);
         if (pathAStar.Length() == 0)
         {
             Debug.LogError("Path_AStar returned no path");
             AbandonJob(myJob);
             pathAStar = null;
-            destTile = currTile;
+            DestTile = CurrTile;
         }
 
 
     }
     void Update_DoJob(float deltaTime)
     {
+        jobSearchCooldown -= deltaTime;
         if (myJob == null)
         {
+            if (jobSearchCooldown > 0)
+            {
+                return;
+            }
+            else
+            {
+                jobSearchCooldown = UnityEngine.Random.Range(.3f, .5f);
+            }
 
             GetNewJob();
             if (myJob == null)
             {
                 //there was no job on the queue for us, so just return
-                destTile = currTile;
+                DestTile = CurrTile;
                 return;
             } 
         }
@@ -117,7 +145,7 @@ public class Character : IXmlSerializable
                 {
                     
 
-                    if(currTile == destTile)
+                    if(CurrTile == DestTile)
                     {
                         //we are at the job site, so deliver the goods;
                         World.current.looseObjManager.PlaceLooseObj(myJob, looseObject);
@@ -134,7 +162,7 @@ public class Character : IXmlSerializable
                     } else
                     {
                         //need to walk to job site
-                        destTile = myJob.tile;
+                        DestTile = myJob.tile;
                         return;
                     }
                 }
@@ -145,7 +173,7 @@ public class Character : IXmlSerializable
 
                     //TODO: Actually, walk to the nearest empty tile and dump it.
 
-                    if(World.current.looseObjManager.PlaceLooseObj(currTile, looseObject) == false){
+                    if(World.current.looseObjManager.PlaceLooseObj(CurrTile, looseObject) == false){
                         Debug.LogError("Character tried to dump loose object into an invalid tile, maybe there is something there?");
                         //FIXME: for the sake of continuing on, we are still going to dump reference
                         looseObject = null;
@@ -156,32 +184,33 @@ public class Character : IXmlSerializable
             } else
             {
                 //at this point the job still requires invenoty but we don't have it
-                if(currTile.looseObject != null  && myJob.DesiresLooseObjType(currTile.looseObject) > 0)
+                if(CurrTile.looseObject != null  && myJob.DesiresLooseObjType(CurrTile.looseObject) > 0)
                 {
-                    World.current.looseObjManager.PlaceLooseObj(this, currTile.looseObject, myJob.DesiresLooseObjType(currTile.looseObject));
+                    World.current.looseObjManager.PlaceLooseObj(this, CurrTile.looseObject, myJob.DesiresLooseObjType(CurrTile.looseObject));
                 }
                 else { 
                     //very simple and unoptimal set-up
                     LooseObject desiredObj = myJob.GetFirstDesiredLooseObj();
-                    LooseObject supplier = World.current.looseObjManager.GetClosestLooseObjectOfType(desiredObj.objectType,
-                        currTile, desiredObj.maxStackSize - desiredObj.stackSize);
+                    pathAStar = World.current.looseObjManager.GetPathToClosestLooseObject(desiredObj.objectType,
+                        CurrTile, desiredObj.maxStackSize - desiredObj.stackSize);
 
-                    if(supplier == null)
+                    if(pathAStar == null)
                     {
-                        Debug.Log("No tile contains object of type: Desired.ObjectType to satisfy job requirements");
+                        //Debug.Log("No tile contains object of type: Desired.ObjectType to satisfy job requirements");
 
                         AbandonJob(myJob);
                         return;
                     }
                     //then deliver the goods
-                    destTile = supplier.tile;
+                    //DestTile = supplier.tile;
+                    _destTile = pathAStar.EndTile();
                     return;
                 }
             }
 
 
             //walk to the job tile, then drop it off
-            destTile = myJob.tile;
+            DestTile = myJob.tile;
             //if not, walt to a tile containing the required goods
             //   if already on such a tile, pick up the goods
             //set dest tile to be 
@@ -192,8 +221,8 @@ public class Character : IXmlSerializable
 
         //if we get here then the job has all the MATS it needs
 
-        destTile = myJob.tile;
-        if (myJob != null && currTile == myJob.tile)
+        DestTile = myJob.tile;
+        if (myJob != null && CurrTile == myJob.tile)
         //if (pathAStar != null && pathAStar.Length() == 1)
         {
             myJob.DoWork(deltaTime);
@@ -204,7 +233,7 @@ public class Character : IXmlSerializable
 
     public void AbandonJob(Job j)
     {
-        nextTile = destTile = currTile;
+        nextTile = DestTile = CurrTile;
         pathAStar = null;
         World.current.jobQueue.Enqueue(j);
         myJob = null;
@@ -212,16 +241,16 @@ public class Character : IXmlSerializable
 
     void Update_Movement(float deltaTime)
     {
-        if (currTile == destTile) { 
+        if (CurrTile == DestTile) { 
             pathAStar = null;
             return; //already where we want to be;
         }
-        if (nextTile == null || nextTile == currTile)
+        if (nextTile == null || nextTile == CurrTile)
         {
             //Get the next tile from the pathfinder.
             if(pathAStar == null || pathAStar.Length() == 0)
             {
-                pathAStar = new Path_AStar(World.current, currTile, destTile);
+                pathAStar = new Path_AStar(World.current, CurrTile, DestTile);
                 if(pathAStar.Length() == 0)
                 {
                     Debug.LogError("Path_AStar returned no path");
@@ -231,17 +260,17 @@ public class Character : IXmlSerializable
                 }
             }
             nextTile = pathAStar.GetNextTile();
-            if(nextTile == currTile && pathAStar.Length() != 0)
+            if(nextTile == CurrTile && pathAStar.Length() != 0)
             {
                 nextTile = pathAStar.GetNextTile();
-                if (nextTile == currTile)
+                if (nextTile == CurrTile)
                 {
                     Debug.LogError("Update--Domovement - Nexttile is currtile?");
                 }
             }
         }
         //total distance from point a to b
-        float distToTravel = Mathf.Sqrt(Mathf.Pow(currTile.X - nextTile.X, 2) + Mathf.Pow(currTile.Y - nextTile.Y, 2));
+        float distToTravel = Mathf.Sqrt(Mathf.Pow(CurrTile.X - nextTile.X, 2) + Mathf.Pow(CurrTile.Y - nextTile.Y, 2));
         //distance we can travel this updat
         if (nextTile.TryEnter() == Enterability.Never)
         {
@@ -256,7 +285,7 @@ public class Character : IXmlSerializable
 
             return;
         }
-        float distThisFrame = speed * deltaTime / ((currTile.movementCost+nextTile.movementCost)/2);
+        float distThisFrame = speed * deltaTime / ((CurrTile.movementCost+nextTile.movementCost)/2);
         //how much is that in terms of percentage
         float percThisFram = distThisFrame / distToTravel;
         movementPercentage += percThisFram;
@@ -265,7 +294,7 @@ public class Character : IXmlSerializable
         {
             //reached our destination
             //Check for next tile and if there are no more tiles then we have truly reached out destingation
-            currTile = nextTile;
+            CurrTile = nextTile;
             movementPercentage = 0;
 
             //FIXME? Do we want to retain any overshot movement?
@@ -279,7 +308,7 @@ public class Character : IXmlSerializable
     public void Update(float deltaTime)
     {
 
-
+        
         Update_DoJob(deltaTime);
 
         Update_Movement(deltaTime);
@@ -292,12 +321,12 @@ public class Character : IXmlSerializable
     }
     public void SetDesination(Tile tile)
     {
-        if (currTile.IsNeighbor(tile,true) == false)
+        if (CurrTile.IsNeighbor(tile,true) == false)
         {
             Debug.LogError("Character::SetDestination: Destination tile is not actually neighbor");
         }
 
-        destTile = tile;
+        DestTile = tile;
     }
    
     public void RegisterOnChangedCB(Action<Character> cb)
@@ -329,8 +358,8 @@ public class Character : IXmlSerializable
     public void WriteXml(XmlWriter writer)
     {
         //writer.WriteAttributeString("Type", Type.ToString());
-        writer.WriteAttributeString("X", currTile.X.ToString());
-        writer.WriteAttributeString("Y", currTile.Y.ToString());
+        writer.WriteAttributeString("X", CurrTile.X.ToString());
+        writer.WriteAttributeString("Y", CurrTile.Y.ToString());
     }
 
     public void ReadXml(XmlReader reader)
@@ -338,5 +367,18 @@ public class Character : IXmlSerializable
 
     }
 
-    
+    public string GetName()
+    {
+        throw new NotImplementedException();
+    }
+
+    public string GetDescription()
+    {
+        throw new NotImplementedException();
+    }
+
+    public string getHitPointString()
+    {
+        throw new NotImplementedException();
+    }
 }

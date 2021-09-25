@@ -7,8 +7,9 @@ using System.Linq;
 public class TileSpriteController : MonoBehaviour
 {
     Dictionary<Tile, GameObject> tileGameObjectMap;
-    public Sprite floorSprite;
-    public Sprite emptyFloorSprite;
+    Sprite floorSprite;
+    Sprite emptyFloorSprite;
+    string TILE_SPRITE_FOLDER = "Tiles_";
     // Start is called before the first frame update
 
     World world
@@ -17,6 +18,8 @@ public class TileSpriteController : MonoBehaviour
     }
     void Start()
     {
+        floorSprite = SpriteManager.current.sprites[TILE_SPRITE_FOLDER + "BasicTile"];
+        emptyFloorSprite = SpriteManager.current.sprites[TILE_SPRITE_FOLDER + "EmptyTile"];
         tileGameObjectMap = new Dictionary<Tile, GameObject>();
         int w = world.Width;
         for (int x = 0; x < world.Width; x++)
@@ -70,7 +73,7 @@ public class TileSpriteController : MonoBehaviour
     void OnTileChanged(Tile tile_data)
     {
 
-        if (!tileGameObjectMap.ContainsKey(tile_data))
+        if (tileGameObjectMap.ContainsKey(tile_data) == false)
         {
             Debug.LogError("tileGameObjectMap Doesn't contain the tile_data. May not be in dicitonary");
             return;
@@ -83,10 +86,10 @@ public class TileSpriteController : MonoBehaviour
         }
 
 
-        if (tile_data.tileType ==TileType.Floor)
+        if (tile_data.TileType ==TileType.Floor)
         {
             tile_go.GetComponent<SpriteRenderer>().sprite = floorSprite;
-        } else if (tile_data.tileType == TileType.Empty)
+        } else if (tile_data.TileType == TileType.Empty)
         {
             tile_go.GetComponent<SpriteRenderer>().sprite = emptyFloorSprite;
         } else

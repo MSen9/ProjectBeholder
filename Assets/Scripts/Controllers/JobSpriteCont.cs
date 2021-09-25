@@ -30,7 +30,7 @@ public class JobSpriteCont : MonoBehaviour
 
         if (job == null || jobGameObjectMap.ContainsKey(job))
         {
-            Debug.LogError("Onjobcreated for a jobGO that already exists -- most likely a job being re-queued");
+            //Debug.LogError("Onjobcreated for a jobGO that already exists -- most likely a job being re-queued");
             return;
         }
         //Tile tile_data = World.getTileAt(x, y);

@@ -4,7 +4,6 @@ using UnityEngine;
 using System.Xml.Schema;
 using System.Xml.Serialization;
 using System.Xml;
-
 public class Room : IXmlSerializable
 {
     //atmospheric stats
@@ -105,7 +104,7 @@ public class Room : IXmlSerializable
             return;
         }
 
-        if (tile.tileType == TileType.Empty)
+        if (tile.TileType == TileType.Empty)
         {
             return;
         }
@@ -127,7 +126,7 @@ public class Room : IXmlSerializable
                 Tile[] ns = t.GetNeighbors();
                 foreach(Tile t2 in ns)
                 {
-                    if(t2 == null || t2.tileType == TileType.Empty)
+                    if(t2 == null || t2.TileType == TileType.Empty)
                     {
                         //hit open space,
                         if (desconstructCause)

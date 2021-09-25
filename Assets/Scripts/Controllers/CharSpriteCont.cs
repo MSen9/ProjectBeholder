@@ -6,8 +6,8 @@ public class CharSpriteCont : MonoBehaviour
 {
 
     Dictionary<Character, GameObject> characterGameObjectMap;
-
-    Dictionary<string, Sprite> characterSprites;
+    string CHARACTER_SPRITE_FOLDER = "Characters_";
+    //Dictionary<string, Sprite> characterSprites;
     // Start is called before the first frame update
 
     World world
@@ -18,6 +18,7 @@ public class CharSpriteCont : MonoBehaviour
     void Start()
     {
         characterGameObjectMap = new Dictionary<Character, GameObject>();
+        /*
         characterSprites = new Dictionary<string, Sprite>();
         Sprite[] sprites = Resources.LoadAll<Sprite>("Sprites/Characters/");
         foreach (Sprite s in sprites)
@@ -25,7 +26,7 @@ public class CharSpriteCont : MonoBehaviour
             //Debug.Log(s);
             characterSprites[s.name] = s;
         }
-
+        */
         world.RegisterCharacterCreated(OnCharacterCreated);
 
        //check for pre-existing
@@ -48,11 +49,19 @@ public class CharSpriteCont : MonoBehaviour
 
         char_go.name = "Character";
         char_go.transform.position = new Vector3(character.X, character.Y);
-        SpriteRenderer inst_sr = char_go.AddComponent<SpriteRenderer>();
+        SpriteRenderer char_sr = char_go.AddComponent<SpriteRenderer>();
         char_go.transform.SetParent(this.transform, true);
 
-        inst_sr.sprite = characterSprites["BaseMan"]; //FIXME
-        inst_sr.sortingLayerName = "Characters";
+        
+        char_sr.sprite = SpriteManager.current.sprites[CHARACTER_SPRITE_FOLDER+"BaseMan"]; //FIXME: add a more advanced way of getting new character sprites
+        char_sr.sortingLayerName = "Characters";
+
+        /*
+        BoxCollider2D bCollider = char_go.AddComponent<BoxCollider2D>();
+        Vector2 spriteSize = char_sr.sprite.bounds.size;
+        bCollider.size = spriteSize;
+        */
+        //bCollider.center = new Vector2(spriteSize.x / 2, 0);
         character.RegisterOnChangedCB(OnCharacterChanged);
     }
     
@@ -72,4 +81,27 @@ public class CharSpriteCont : MonoBehaviour
         char_go.transform.position = new Vector3(c.X, c.Y,char_go.transform.position.z);
     }
     
+    public List<Character> GetCharsUnderMouse(Tile t, float mouseX, float mouseY)
+    {
+        List<Character> chars = new List<Character>();
+        foreach(Character c in characterGameObjectMap.Keys)
+        {
+            if (t == c.CurrTile || t.IsNeighbor(c.CurrTile, true))
+            {
+                //mouse could be over it
+                GameObject char_go = characterGameObjectMap[c];
+                SpriteRenderer char_sr = char_go.GetComponent<SpriteRenderer>();
+                Vector2 spriteSize = char_sr.sprite.bounds.size;
+                //assume central pivot for now
+                float xDist = Mathf.Abs(char_go.transform.position.x - mouseX);
+                float yDist = Mathf.Abs(char_go.transform.position.y - mouseY);
+                if(xDist <= spriteSize.x/2 && yDist <= spriteSize.y / 2)
+                {
+                    chars.Add(c);
+                    Debug.Log("Clicked over a character");
+                }
+            }
+        }
+        return chars;
+    }
 }

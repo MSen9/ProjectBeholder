@@ -148,7 +148,7 @@ public class LooseObjManager
                     if (t2 != null
                         && (t2.installedObject == null || t2.installedObject.roomEnclosure == false)
                         && checkedTiles.Contains(t2) == false
-                        && t2.tileType != TileType.Empty)
+                        && t2.TileType != TileType.Empty)
                     {
                         tilesToCheck.Enqueue(t2);
                     }
@@ -235,14 +235,20 @@ public class LooseObjManager
             Debug.LogError("No items of desired type");
             return null;
         }
-        foreach (LooseObject looseObj in looseObjects[objectType])
-        {
-            if(looseObj.tile != null)
-            {
-                return looseObj;
-            }
-        }
+        Path_AStar path = new Path_AStar(World.current, t, null, objectType);
+        return path.EndTile().looseObject;
+    }
 
-        return null;
+    public Path_AStar GetPathToClosestLooseObject(string objectType, Tile t, int desiredAmount)
+    {
+
+        //FIXME: we are lying right now, just getting the FIRST, not the closest, need a distance type database
+        if (looseObjects.ContainsKey(objectType) == false)
+        {
+            Debug.Log("No items of desired type: " + objectType);
+            return null;
+        }
+        Path_AStar path = new Path_AStar(World.current, t, null, objectType);
+        return path;
     }
 }

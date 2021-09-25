@@ -135,7 +135,7 @@ public class BuildModeController : MonoBehaviour
         }
         else if(buildMode == BuildMode.FLOOR)
         {
-            t.tileType = buildModeTile;
+            t.TileType = buildModeTile;
 
         } else if(buildMode == BuildMode.DECONSTRUCT)
         {

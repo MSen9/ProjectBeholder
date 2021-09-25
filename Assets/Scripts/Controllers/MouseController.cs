@@ -18,6 +18,7 @@ public class MouseController : MonoBehaviour
     bool canDragSelect = false;
     BuildModeController bmc;
     InstObjSpriteController iosc;
+    CharSpriteCont csc;
     GameObject instObjPreview;
     GameObject instDragPrevs;
     bool isDragging;
@@ -27,7 +28,26 @@ public class MouseController : MonoBehaviour
         Build,
         Select
     }
-    MouseMode currMouseMode = MouseMode.Select;
+    MouseMode _currMouseMode = MouseMode.Select;
+    MouseMode CurrMouseMode
+    {
+        get
+        {
+            return _currMouseMode;
+        }
+        set
+        {
+            if(_currMouseMode != value)
+            {
+                if (_currMouseMode == MouseMode.Select)
+                {
+                    mySelection = null;
+                }
+                _currMouseMode = value;
+            }
+            
+        }
+    }
   void Start()
     {
         isDragging = false;
@@ -37,6 +57,7 @@ public class MouseController : MonoBehaviour
         //SimplePool.Preload(circleCursorPrefab, 100);
 
         iosc = GameObject.FindObjectOfType<InstObjSpriteController>();
+        csc = GameObject.FindObjectOfType<CharSpriteCont>();
         instObjPreview = new GameObject();
         instObjPreview.transform.SetParent(gameObject.transform);
         instObjPreview.AddComponent<SpriteRenderer>();
@@ -46,7 +67,7 @@ public class MouseController : MonoBehaviour
 
     public void SetMode_Build()
     {
-        currMouseMode = MouseMode.Build;
+        CurrMouseMode = MouseMode.Build;
     }
     public Vector3 GetMousePosition()
     {
@@ -63,8 +84,11 @@ public class MouseController : MonoBehaviour
         currFramePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
 
         currFramePos.z = 0;
-
-        if(currMouseMode == MouseMode.Build)
+        if (CurrMouseMode == MouseMode.Select)
+        {
+            UpdateSelectModeSelection();
+        }
+        if (CurrMouseMode == MouseMode.Build)
         {
             updateSelectDrag();
         }
@@ -75,7 +99,79 @@ public class MouseController : MonoBehaviour
 
     }
 
-    
+
+    public class SelectionInfo
+    {
+        /*
+        public Character character;
+        public LooseObject looseObj;
+        public InstalledObject instObj;
+        */
+        public Tile tile;
+        public List<ISelectableInterface> stuffInTile;
+        public int subSelection = 0;
+    }
+
+    public SelectionInfo mySelection;
+    void UpdateSelectModeSelection()
+    {
+        
+        if (Input.GetKeyUp(KeyCode.Escape))
+        {
+            mySelection = null;
+        }
+        if (EventSystem.current.IsPointerOverGameObject())
+        {
+            return;
+        }
+        //this handles us left-clickign on inst objs or characters to get a selections
+        if (Input.GetMouseButtonDown(0))
+        {
+            //Debug.Log("Update Selection");
+            //we just released the mouse button, so that's our queue to update our selection
+            Tile tileUnderMouse = GetMouseOverTile();
+
+            if (tileUnderMouse != null && (mySelection == null || mySelection.tile != tileUnderMouse))
+            {
+
+                RebuildSelectionInfo(tileUnderMouse);
+
+                for (int i = 0; i < mySelection.stuffInTile.Count; i++)
+                {
+                    if (mySelection.stuffInTile[i] != null)
+                    {
+                        mySelection.subSelection = i;
+                        break;
+                    }
+                }
+              
+            } else
+            {
+                //same time, cycle to next subselection
+                do
+                {
+                    mySelection.subSelection = (mySelection.subSelection + 1) % mySelection.stuffInTile.Count;
+                } while (mySelection.stuffInTile[mySelection.subSelection] == null);
+            }
+            Debug.Log(mySelection.subSelection);
+        }
+    }
+
+    void RebuildSelectionInfo(Tile tileUnderMouse)
+    {
+        //Debug.Log("New selection tile");
+        mySelection = new SelectionInfo();
+        mySelection.tile = tileUnderMouse;
+        mySelection.stuffInTile = new List<ISelectableInterface>();
+        List<Character> chars = csc.GetCharsUnderMouse(tileUnderMouse, GetMousePosition().x, GetMousePosition().y);
+        for (int i = 0; i < chars.Count; i++)
+        {
+            mySelection.stuffInTile.Add(chars[i]);
+        }
+        mySelection.stuffInTile.Add(tileUnderMouse.looseObject);
+        mySelection.stuffInTile.Add(tileUnderMouse.installedObject);
+        mySelection.stuffInTile.Add(tileUnderMouse);
+    }
     void updateSelectDrag()
     {
 
@@ -89,7 +185,7 @@ public class MouseController : MonoBehaviour
         if (Input.GetMouseButtonDown(1))
         {
             isDragging = false;
-            currMouseMode = MouseMode.Select;
+            CurrMouseMode = MouseMode.Select;
             return;
         }
 
@@ -112,7 +208,7 @@ public class MouseController : MonoBehaviour
 
 
         
-        if(currMouseMode != MouseMode.Build)
+        if(CurrMouseMode != MouseMode.Build)
         {
 
             return;
